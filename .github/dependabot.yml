@@ -9,6 +9,12 @@ updates:
       time: "04:00"
       timezone: Etc/UTC
     open-pull-requests-limit: 5
+    # quic-go v0.61+ requires Go 1.26. Keep the supported Go 1.25 line
+    # until the project deliberately raises its minimum toolchain.
+    ignore:
+      - dependency-name: github.com/quic-go/quic-go
+        versions:
+          - ">= 0.61.0"
     groups:
       go-modules:
         patterns:
