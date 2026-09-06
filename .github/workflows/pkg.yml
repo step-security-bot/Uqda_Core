@@ -23,12 +23,12 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "stable"
 
@@ -41,7 +41,7 @@ jobs:
             -czf "${NAME}-${VERSION}-vendored.tar.gz" *
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Vendored sources
           path: "*.tar.gz"
@@ -57,12 +57,12 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "stable"
 
@@ -78,7 +78,7 @@ jobs:
           dpkg-deb --contents "$package" | grep -E 'usr/bin/(uqda|uqdactl)$'
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Debian package (${{ matrix.pkgarch }})
           path: "*.deb"
@@ -94,12 +94,12 @@ jobs:
 
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "stable"
 
@@ -115,7 +115,7 @@ jobs:
           test -s expanded.pkg/base.pkg/Payload
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macOS package (${{ matrix.pkgarch }})
           path: "*.pkg"
@@ -131,17 +131,17 @@ jobs:
 
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "stable"
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
 
       - name: Build package
         run: sh contrib/msi/build-msi.sh ${{ matrix.pkgarch }}
@@ -159,7 +159,7 @@ jobs:
           ./contrib/msi/test-installed-msi.ps1 -MsiPath $msi -ExpectedVersion $version
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Windows package (${{ matrix.pkgarch }})
           path: "*.msi"
@@ -187,12 +187,12 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: "stable"
 
@@ -211,7 +211,7 @@ jobs:
           dpkg-deb --contents "$package" | head -1 | grep '^drwxr-xr-x'
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Router package (${{ matrix.target }})
           path: "uqda-${{ matrix.pkgtarget }}-*.deb"
