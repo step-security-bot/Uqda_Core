@@ -1,0 +1,82 @@
+name: Bug report
+description: Report a reproducible defect in UQDA Core or its installers.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: checkboxes
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and tested the latest stable release.
+          required: true
+        - label: I removed private keys, passwords, public IP addresses, and other sensitive data.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: UQDA version
+      description: Paste the output of `uqda -version` or `uqda.exe -version`.
+      placeholder: Build version 0.1.8
+    validations:
+      required: true
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - FreeBSD
+        - OpenBSD
+        - OpenWrt
+        - EdgeOS or VyOS
+        - Container
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: architecture
+    attributes:
+      label: Architecture and OS version
+      placeholder: Windows 11 24H2 x64, macOS 15 arm64, Fedora 42 amd64
+    validations:
+      required: true
+  - type: input
+    id: install-method
+    attributes:
+      label: Installation method
+      placeholder: MSI, Homebrew, install.sh, DEB, container, source build
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest sequence that reproduces the issue.
+      placeholder: |
+        1. Install ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and diagnostics
+      description: Include sanitized errors, service status, and `uqdactl doctor` output when available.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add relevant configuration with all secrets and identifying network data removed.

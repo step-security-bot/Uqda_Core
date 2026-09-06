@@ -1,0 +1,10 @@
+# Default review owner. More-specific security and release paths are repeated
+# so GitHub makes their ownership visible in pull-request reviews.
+* @maher-xs
+
+/.github/workflows/ @maher-xs
+/.github/dependabot.yml @maher-xs
+/SECURITY.md @maher-xs
+/src/core/ @maher-xs
+/src/admin/ @maher-xs
+/contrib/msi/ @maher-xs

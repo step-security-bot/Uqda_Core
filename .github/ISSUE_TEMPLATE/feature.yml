@@ -1,0 +1,32 @@
+name: Feature request
+description: Propose a focused improvement to UQDA Core.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the user problem, not only the preferred implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain how the feature should work from the user's perspective.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    attributes:
+      label: Compatibility and security
+      options:
+        - label: I described any protocol, configuration, platform, or backward-compatibility impact.
+          required: true
+        - label: I considered how this changes UQDA's security or trust boundaries.
+          required: true

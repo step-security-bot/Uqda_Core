@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Uqda/Core/security/advisories/new
+    about: Report vulnerabilities privately. Do not disclose exploit details in a public issue.
+  - name: Documentation and project guide
+    url: https://github.com/Uqda/Core/blob/main/docs/PROJECT_GUIDE.md
+    about: Check installation, configuration, operation, and troubleshooting guidance first.

@@ -1,0 +1,26 @@
+name: Support question
+description: Ask a usage, installation, or configuration question.
+title: "[Question]: "
+labels:
+  - question
+body:
+  - type: input
+    id: goal
+    attributes:
+      label: What are you trying to achieve?
+    validations:
+      required: true
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you tried?
+      description: Include sanitized commands and output. Never include node private keys or passwords.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Version and environment
+      placeholder: UQDA 0.1.8, Windows 11 x64, MSI installation
+    validations:
+      required: true
