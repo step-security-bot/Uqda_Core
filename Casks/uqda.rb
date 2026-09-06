@@ -1,5 +1,5 @@
 cask "uqda" do
-  version "0.1.8"
+  version "0.1.9"
   sha256 "202c191d612f3499570afab6a9cb731cbdd9e3402d2abc28409bd11652006379"
 
   url "https://github.com/Uqda/Core/releases/download/v#{version}/install.sh"
