@@ -18,10 +18,19 @@ fi
 # Download the wix tools!
 dotnet tool install --global wix --version 5.0.0
 
-# Build UQDA!
-[ "${PKGARCH}" == "x64" ] && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 ./build
-[ "${PKGARCH}" == "x86" ] && GOOS=windows GOARCH=386 CGO_ENABLED=0 ./build
-[ "${PKGARCH}" == "arm64" ] && GOOS=windows GOARCH=arm64 CGO_ENABLED=0 ./build
+# Build UQDA unless the release workflow supplied already-built, Authenticode-
+# signed binaries. Rebuilding here would silently strip those signatures from
+# the files embedded in the MSI.
+if [ "${UQDA_USE_PREBUILT:-0}" != "1" ]; then
+  [ "${PKGARCH}" == "x64" ] && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 ./build
+  [ "${PKGARCH}" == "x86" ] && GOOS=windows GOARCH=386 CGO_ENABLED=0 ./build
+  [ "${PKGARCH}" == "arm64" ] && GOOS=windows GOARCH=arm64 CGO_ENABLED=0 ./build
+fi
+
+if [ ! -s uqda.exe ] || [ ! -s uqdactl.exe ]; then
+  echo "uqda.exe and uqdactl.exe must exist before packaging" >&2
+  exit 1
+fi
 
 # Create the postinstall script
 cat > updateconfig.bat << EOF

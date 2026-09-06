@@ -147,6 +147,14 @@ jobs:
         shell: bash
         run: test -n "$(find . -maxdepth 1 -name 'uqda-*.msi' -size +1M -print -quit)"
 
+      - name: Install, exercise, and uninstall x64 package
+        if: matrix.pkgarch == 'x64'
+        shell: powershell
+        run: |
+          $msi = (Get-ChildItem -Path . -Filter "uqda-*-x64.msi" -File).FullName
+          $version = sh contrib/semver/version.sh --bare
+          ./contrib/msi/test-installed-msi.ps1 -MsiPath $msi -ExpectedVersion $version
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

@@ -159,6 +159,11 @@ cd "C:\Program Files (x86)\UQDA"
 قد يكون مسار حزمة 64 بت `C:\Program Files\UQDA` بدلًا من ذلك. يوجد ملف
 الإعداد وسجل الخدمة داخل `$env:ProgramData\UQDA`.
 
+يفرض مسار الإصدار المستقر توقيع Authenticode صالحًا على `uqda.exe` و
+`uqdactl.exe` وعلى ملف MSI نفسه، ويمنع النشر إذا كان التوقيع أو الختم الزمني
+غير صالح. راجع [إعداد توقيع إصدارات Windows](docs/windows-release-signing.md)
+لمعرفة خطوات شهادة Microsoft Artifact Signing وربطها الآمن مع GitHub Actions.
+
 للتحقق من هوية ناشر الإصدار بواسطة Sigstore قبل التثبيت، راجع
 [دليل التحقق من الإصدارات](docs/release-verification.md).
 

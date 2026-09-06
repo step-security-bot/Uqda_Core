@@ -141,8 +141,10 @@ Depending on the installed architecture, the directory can instead be
 `C:\Program Files\UQDA`. The configuration and service log are under
 `$env:ProgramData\UQDA`.
 
-For publisher-authenticated verification with Sigstore before installation, see
-[the release verification guide](docs/release-verification.md).
+The stable-release pipeline requires Authenticode signatures on both installed
+executables and the MSI. For release-pipeline setup see
+[Windows release signing](docs/windows-release-signing.md); for independent
+publisher verification see [the release verification guide](docs/release-verification.md).
 
 ## Uninstall
 

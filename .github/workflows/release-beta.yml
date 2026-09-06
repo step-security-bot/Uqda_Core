@@ -295,6 +295,9 @@ jobs:
   windows:
     name: Windows (${{ matrix.arch }})
     runs-on: windows-latest
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -305,17 +308,91 @@ jobs:
           fetch-depth: 0
       - name: Resolve release version
         shell: bash
-        run: echo "UQDA_VERSION=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")" >> "$GITHUB_ENV"
+        run: |
+          version=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")
+          echo "UQDA_VERSION=$version" >> "$GITHUB_ENV"
+          echo "UQDA_VERSION_BARE=${version#v}" >> "$GITHUB_ENV"
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       - uses: actions/setup-dotnet@v4
-      - name: Build and inspect installer
+      - name: Require Windows signing configuration
         shell: bash
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARTIFACT_SIGNING_ENDPOINT: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          ARTIFACT_SIGNING_ACCOUNT_NAME: ${{ vars.ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME: ${{ vars.ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+        run: |
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID ARTIFACT_SIGNING_ENDPOINT ARTIFACT_SIGNING_ACCOUNT_NAME ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME; do
+            test -n "$(printenv "$name")" || { echo "Missing required Windows signing setting: $name" >&2; exit 1; }
+          done
+      - name: Build Windows executables
+        shell: bash
+        run: |
+          case "${{ matrix.arch }}" in
+            x64) goarch=amd64 ;;
+            x86) goarch=386 ;;
+            arm64) goarch=arm64 ;;
+            *) exit 1 ;;
+          esac
+          GOOS=windows GOARCH="$goarch" CGO_ENABLED=0 ./build
+      - name: Authenticate to Azure with GitHub OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Sign Windows executables
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          files: |
+            ${{ github.workspace }}\uqda.exe
+            ${{ github.workspace }}\uqdactl.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: UQDA Core
+          description-url: https://github.com/Uqda/Core
+      - name: Verify executable signatures
+        shell: powershell
+        run: ./contrib/msi/verify-authenticode.ps1 -Path @("uqda.exe", "uqdactl.exe")
+      - name: Build installer around signed executables
+        shell: bash
+        env:
+          UQDA_USE_PREBUILT: "1"
         run: |
           sh contrib/msi/build-msi.sh "${{ matrix.arch }}"
           test "$(sh contrib/msi/msversion.sh)" = "${UQDA_VERSION#v}"
           test -s "uqda-${UQDA_VERSION#v}-${{ matrix.arch }}.msi"
+      - name: Sign Windows installer
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.ARTIFACT_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ vars.ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          files: ${{ github.workspace }}\uqda-${{ env.UQDA_VERSION_BARE }}-${{ matrix.arch }}.msi
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: UQDA Core Windows Installer
+          description-url: https://github.com/Uqda/Core
+      - name: Verify installer signature
+        shell: powershell
+        run: ./contrib/msi/verify-authenticode.ps1 -Path "uqda-${env:UQDA_VERSION_BARE}-${{ matrix.arch }}.msi"
+      - name: Install, exercise, and uninstall signed x64 package
+        if: matrix.arch == 'x64'
+        shell: powershell
+        run: |
+          ./contrib/msi/test-installed-msi.ps1 `
+            -MsiPath "uqda-${env:UQDA_VERSION_BARE}-x64.msi" `
+            -ExpectedVersion "${env:UQDA_VERSION_BARE}" `
+            -RequireSignature
       - uses: actions/upload-artifact@v4
         with:
           name: windows-${{ matrix.arch }}
