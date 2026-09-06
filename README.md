@@ -141,10 +141,10 @@ Depending on the installed architecture, the directory can instead be
 `C:\Program Files\UQDA`. The configuration and service log are under
 `$env:ProgramData\UQDA`.
 
-The stable-release pipeline requires Authenticode signatures on both installed
-executables and the MSI. Free Windows code signing is provided by
-[SignPath.io](https://signpath.io/), with a certificate from
-[SignPath Foundation](https://signpath.org/). See the public
+Windows assets ending in `-unsigned.msi` have passed the complete automated
+installation test but do not carry an Authenticode publisher signature. Managed
+Windows systems may block them according to local WDAC or AppLocker policy.
+Future signed builds can use the documented SignPath Foundation path. See the
 [code signing policy](docs/CODE_SIGNING_POLICY.md), the
 [Windows release-signing setup](docs/windows-release-signing.md), and the
 [release verification guide](docs/release-verification.md).

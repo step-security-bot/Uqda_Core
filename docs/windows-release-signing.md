@@ -1,16 +1,20 @@
 # Windows release signing
 
-UQDA stable Windows releases must be Authenticode-signed with a publicly trusted
-certificate. Signing only the MSI is not sufficient: `uqda.exe` and
-`uqdactl.exe` are signed first, those exact binaries are embedded in the MSI,
-and the completed MSI is signed afterwards. The stable-release workflow refuses
-to publish Windows assets when signing is unavailable, rejected, or invalid.
+UQDA can publish Windows releases before an external code-signing service is
+configured. Such packages are always named `*-unsigned.msi`; the release notes
+must disclose the limitation. The workflow still performs the complete x64
+install, service, command, PATH, and uninstall test.
+
+When SignPath is configured, `uqda.exe` and `uqdactl.exe` are signed first,
+those exact binaries are embedded in the MSI, and the completed MSI is signed
+afterwards. The workflow refuses to publish a normally named Windows asset if
+signing is rejected or invalid.
 
 Checksums, GitHub artifact attestations, and Sigstore prove release provenance,
 but Windows application-control policies evaluate the embedded Authenticode
 signature on the executable or installer they launch.
 
-## Selected service: SignPath Foundation
+## Optional future service: SignPath Foundation
 
 UQDA uses the free SignPath Foundation program for qualifying open-source
 projects. Microsoft lists SignPath Foundation as an open-source code-signing
@@ -68,10 +72,12 @@ by SignPath:
 - `SIGNPATH_EXECUTABLES_ARTIFACT_CONFIGURATION_SLUG`
 - `SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG`
 
-The workflow intentionally fails before building release assets if any value is
-missing. The unsigned intermediate GitHub artifacts are clearly named
-`internal-unsigned-*`, retained for one day, and are never published in the
-stable release.
+If `SIGNPATH_API_TOKEN` is present, the workflow requires every related
+variable and fails on partial configuration. If the token is absent, it skips
+the signing submissions and publishes only an explicitly named
+`*-unsigned.msi` after the installation test. SignPath intermediate artifacts
+are named `internal-unsigned-*`, retained for one day, and never published as
+stable downloads.
 
 ## Release gate
 
@@ -89,8 +95,9 @@ For every x64, x86, and ARM64 Windows build, the stable-release workflow:
 8. uninstalls it and verifies removal of the service, binaries, and `PATH`
    entry while preserving the node identity.
 
-The publish job cannot run unless all three signed Windows jobs and every other
-platform job succeed. Never bypass this gate.
+The publish job cannot run unless all three Windows jobs and every other
+platform job succeed. When signing is enabled, signature and timestamp checks
+remain mandatory.
 
 ## Independent verification
 

@@ -298,6 +298,8 @@ jobs:
     permissions:
       actions: read
       contents: read
+    env:
+      SIGNPATH_ENABLED: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -316,7 +318,7 @@ jobs:
         with:
           go-version-file: go.mod
       - uses: actions/setup-dotnet@v6
-      - name: Require SignPath configuration
+      - name: Resolve Windows signing mode
         shell: bash
         env:
           SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -326,9 +328,14 @@ jobs:
           SIGNPATH_EXECUTABLES_ARTIFACT_CONFIGURATION_SLUG: ${{ vars.SIGNPATH_EXECUTABLES_ARTIFACT_CONFIGURATION_SLUG }}
           SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG: ${{ vars.SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG }}
         run: |
-          for name in SIGNPATH_API_TOKEN SIGNPATH_ORGANIZATION_ID SIGNPATH_PROJECT_SLUG SIGNPATH_SIGNING_POLICY_SLUG SIGNPATH_EXECUTABLES_ARTIFACT_CONFIGURATION_SLUG SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG; do
-            test -n "$(printenv "$name")" || { echo "Missing required Windows signing setting: $name" >&2; exit 1; }
-          done
+          if [ "$SIGNPATH_ENABLED" = true ]; then
+            for name in SIGNPATH_API_TOKEN SIGNPATH_ORGANIZATION_ID SIGNPATH_PROJECT_SLUG SIGNPATH_SIGNING_POLICY_SLUG SIGNPATH_EXECUTABLES_ARTIFACT_CONFIGURATION_SLUG SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG; do
+              test -n "$(printenv "$name")" || { echo "Incomplete Windows signing configuration: $name" >&2; exit 1; }
+            done
+            echo "SignPath is configured; Windows release assets will be signed."
+          else
+            echo "SignPath is not configured; Windows release assets will be explicitly named unsigned."
+          fi
       - name: Build Windows executables
         shell: bash
         run: |
@@ -340,6 +347,7 @@ jobs:
           esac
           GOOS=windows GOARCH="$goarch" CGO_ENABLED=0 ./build
       - name: Upload unsigned executables for SignPath
+        if: env.SIGNPATH_ENABLED == 'true'
         id: upload-unsigned-executables
         uses: actions/upload-artifact@v7
         with:
@@ -350,6 +358,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       - name: Sign Windows executables with SignPath
+        if: env.SIGNPATH_ENABLED == 'true'
         uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627 # v2
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -361,6 +370,7 @@ jobs:
           wait-for-completion: true
           output-artifact-directory: ${{ runner.temp }}\signed-executables
       - name: Restore and verify signed executables
+        if: env.SIGNPATH_ENABLED == 'true'
         shell: powershell
         run: |
           foreach ($name in @("uqda.exe", "uqdactl.exe")) {
@@ -379,6 +389,7 @@ jobs:
           test "$(sh contrib/msi/msversion.sh)" = "${UQDA_VERSION#v}"
           test -s "uqda-${UQDA_VERSION#v}-${{ matrix.arch }}.msi"
       - name: Upload unsigned installer for SignPath
+        if: env.SIGNPATH_ENABLED == 'true'
         id: upload-unsigned-installer
         uses: actions/upload-artifact@v7
         with:
@@ -387,6 +398,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       - name: Sign Windows installer with SignPath
+        if: env.SIGNPATH_ENABLED == 'true'
         uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627 # v2
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -398,6 +410,7 @@ jobs:
           wait-for-completion: true
           output-artifact-directory: ${{ runner.temp }}\signed-installer
       - name: Restore and verify signed installer
+        if: env.SIGNPATH_ENABLED == 'true'
         shell: powershell
         run: |
           $name = "uqda-${env:UQDA_VERSION_BARE}-${{ matrix.arch }}.msi"
@@ -406,14 +419,30 @@ jobs:
           if (-not $signed) { throw "SignPath did not return $name" }
           Copy-Item $signed.FullName (Join-Path $env:GITHUB_WORKSPACE $name) -Force
           ./contrib/msi/verify-authenticode.ps1 -Path $name
-      - name: Install, exercise, and uninstall signed x64 package
+      - name: Mark unsigned installer explicitly
+        if: env.SIGNPATH_ENABLED != 'true'
+        shell: powershell
+        run: |
+          $source = "uqda-${env:UQDA_VERSION_BARE}-${{ matrix.arch }}.msi"
+          $target = "uqda-${env:UQDA_VERSION_BARE}-${{ matrix.arch }}-unsigned.msi"
+          Rename-Item $source $target
+      - name: Install, exercise, and uninstall x64 package
         if: matrix.arch == 'x64'
         shell: powershell
         run: |
-          ./contrib/msi/test-installed-msi.ps1 `
-            -MsiPath "uqda-${env:UQDA_VERSION_BARE}-x64.msi" `
-            -ExpectedVersion "${env:UQDA_VERSION_BARE}" `
-            -RequireSignature
+          $name = if ($env:SIGNPATH_ENABLED -eq "true") {
+            "uqda-${env:UQDA_VERSION_BARE}-x64.msi"
+          } else {
+            "uqda-${env:UQDA_VERSION_BARE}-x64-unsigned.msi"
+          }
+          $arguments = @{
+            MsiPath = $name
+            ExpectedVersion = "${env:UQDA_VERSION_BARE}"
+          }
+          if ($env:SIGNPATH_ENABLED -eq "true") {
+            $arguments.RequireSignature = $true
+          }
+          ./contrib/msi/test-installed-msi.ps1 @arguments
       - uses: actions/upload-artifact@v7
         with:
           name: windows-${{ matrix.arch }}
