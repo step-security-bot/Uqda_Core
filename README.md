@@ -142,9 +142,12 @@ Depending on the installed architecture, the directory can instead be
 `$env:ProgramData\UQDA`.
 
 The stable-release pipeline requires Authenticode signatures on both installed
-executables and the MSI. For release-pipeline setup see
-[Windows release signing](docs/windows-release-signing.md); for independent
-publisher verification see [the release verification guide](docs/release-verification.md).
+executables and the MSI. Free Windows code signing is provided by
+[SignPath.io](https://signpath.io/), with a certificate from
+[SignPath Foundation](https://signpath.org/). See the public
+[code signing policy](docs/CODE_SIGNING_POLICY.md), the
+[Windows release-signing setup](docs/windows-release-signing.md), and the
+[release verification guide](docs/release-verification.md).
 
 ## Uninstall
 

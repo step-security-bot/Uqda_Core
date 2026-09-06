@@ -296,8 +296,8 @@ jobs:
     name: Windows (${{ matrix.arch }})
     runs-on: windows-latest
     permissions:
+      actions: read
       contents: read
-      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -316,17 +316,17 @@ jobs:
         with:
           go-version-file: go.mod
       - uses: actions/setup-dotnet@v6
-      - name: Require Windows signing configuration
+      - name: Require SignPath configuration
         shell: bash
         env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          ARTIFACT_SIGNING_ENDPOINT: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
-          ARTIFACT_SIGNING_ACCOUNT_NAME: ${{ vars.ARTIFACT_SIGNING_ACCOUNT_NAME }}
-          ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME: ${{ vars.ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+          SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          SIGNPATH_SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          SIGNPATH_EXECUTABLES_ARTIFACT_CONFIGURATION_SLUG: ${{ vars.SIGNPATH_EXECUTABLES_ARTIFACT_CONFIGURATION_SLUG }}
+          SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG: ${{ vars.SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG }}
         run: |
-          for name in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID ARTIFACT_SIGNING_ENDPOINT ARTIFACT_SIGNING_ACCOUNT_NAME ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME; do
+          for name in SIGNPATH_API_TOKEN SIGNPATH_ORGANIZATION_ID SIGNPATH_PROJECT_SLUG SIGNPATH_SIGNING_POLICY_SLUG SIGNPATH_EXECUTABLES_ARTIFACT_CONFIGURATION_SLUG SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG; do
             test -n "$(printenv "$name")" || { echo "Missing required Windows signing setting: $name" >&2; exit 1; }
           done
       - name: Build Windows executables
@@ -339,29 +339,37 @@ jobs:
             *) exit 1 ;;
           esac
           GOOS=windows GOARCH="$goarch" CGO_ENABLED=0 ./build
-      - name: Authenticate to Azure with GitHub OIDC
-        uses: azure/login@v3
+      - name: Upload unsigned executables for SignPath
+        id: upload-unsigned-executables
+        uses: actions/upload-artifact@v7
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Sign Windows executables
-        uses: azure/artifact-signing-action@v2
+          name: internal-unsigned-windows-executables-${{ matrix.arch }}
+          path: |
+            uqda.exe
+            uqdactl.exe
+          if-no-files-found: error
+          retention-days: 1
+      - name: Sign Windows executables with SignPath
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627 # v2
         with:
-          endpoint: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
-          signing-account-name: ${{ vars.ARTIFACT_SIGNING_ACCOUNT_NAME }}
-          certificate-profile-name: ${{ vars.ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
-          files: |
-            ${{ github.workspace }}\uqda.exe
-            ${{ github.workspace }}\uqdactl.exe
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
-          description: UQDA Core
-          description-url: https://github.com/Uqda/Core
-      - name: Verify executable signatures
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_EXECUTABLES_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned-executables.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: ${{ runner.temp }}\signed-executables
+      - name: Restore and verify signed executables
         shell: powershell
-        run: ./contrib/msi/verify-authenticode.ps1 -Path @("uqda.exe", "uqdactl.exe")
+        run: |
+          foreach ($name in @("uqda.exe", "uqdactl.exe")) {
+            $signed = Get-ChildItem "${env:RUNNER_TEMP}\signed-executables" -Recurse -File -Filter $name |
+              Select-Object -First 1
+            if (-not $signed) { throw "SignPath did not return $name" }
+            Copy-Item $signed.FullName (Join-Path $env:GITHUB_WORKSPACE $name) -Force
+          }
+          ./contrib/msi/verify-authenticode.ps1 -Path @("uqda.exe", "uqdactl.exe")
       - name: Build installer around signed executables
         shell: bash
         env:
@@ -370,21 +378,34 @@ jobs:
           sh contrib/msi/build-msi.sh "${{ matrix.arch }}"
           test "$(sh contrib/msi/msversion.sh)" = "${UQDA_VERSION#v}"
           test -s "uqda-${UQDA_VERSION#v}-${{ matrix.arch }}.msi"
-      - name: Sign Windows installer
-        uses: azure/artifact-signing-action@v2
+      - name: Upload unsigned installer for SignPath
+        id: upload-unsigned-installer
+        uses: actions/upload-artifact@v7
         with:
-          endpoint: ${{ vars.ARTIFACT_SIGNING_ENDPOINT }}
-          signing-account-name: ${{ vars.ARTIFACT_SIGNING_ACCOUNT_NAME }}
-          certificate-profile-name: ${{ vars.ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME }}
-          files: ${{ github.workspace }}\uqda-${{ env.UQDA_VERSION_BARE }}-${{ matrix.arch }}.msi
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
-          description: UQDA Core Windows Installer
-          description-url: https://github.com/Uqda/Core
-      - name: Verify installer signature
+          name: internal-unsigned-windows-installer-${{ matrix.arch }}
+          path: uqda-${{ env.UQDA_VERSION_BARE }}-${{ matrix.arch }}.msi
+          if-no-files-found: error
+          retention-days: 1
+      - name: Sign Windows installer with SignPath
+        uses: signpath/github-action-submit-signing-request@c92b958760219087e01f8d67a1669ed57afe2627 # v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ vars.SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned-installer.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: ${{ runner.temp }}\signed-installer
+      - name: Restore and verify signed installer
         shell: powershell
-        run: ./contrib/msi/verify-authenticode.ps1 -Path "uqda-${env:UQDA_VERSION_BARE}-${{ matrix.arch }}.msi"
+        run: |
+          $name = "uqda-${env:UQDA_VERSION_BARE}-${{ matrix.arch }}.msi"
+          $signed = Get-ChildItem "${env:RUNNER_TEMP}\signed-installer" -Recurse -File -Filter $name |
+            Select-Object -First 1
+          if (-not $signed) { throw "SignPath did not return $name" }
+          Copy-Item $signed.FullName (Join-Path $env:GITHUB_WORKSPACE $name) -Force
+          ./contrib/msi/verify-authenticode.ps1 -Path $name
       - name: Install, exercise, and uninstall signed x64 package
         if: matrix.arch == 'x64'
         shell: powershell

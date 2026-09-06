@@ -8,3 +8,6 @@
 /src/core/ @maher-xs
 /src/admin/ @maher-xs
 /contrib/msi/ @maher-xs
+/docs/CODE_SIGNING_POLICY.md @maher-xs
+/docs/windows-release-signing.md @maher-xs
+/.signpath/ @maher-xs

@@ -3,102 +3,104 @@
 UQDA stable Windows releases must be Authenticode-signed with a publicly trusted
 certificate. Signing only the MSI is not sufficient: `uqda.exe` and
 `uqdactl.exe` are signed first, those exact binaries are embedded in the MSI,
-and the finished MSI is signed afterwards. The stable-release workflow refuses
-to publish Windows assets when signing is unavailable or signature validation
-fails.
+and the completed MSI is signed afterwards. The stable-release workflow refuses
+to publish Windows assets when signing is unavailable, rejected, or invalid.
 
-This is required for Windows Smart App Control. Checksums and Sigstore attest
-that a release came from the expected GitHub workflow, but Windows application
-control evaluates the Authenticode signature on the executable it launches.
+Checksums, GitHub artifact attestations, and Sigstore prove release provenance,
+but Windows application-control policies evaluate the embedded Authenticode
+signature on the executable or installer they launch.
 
-## Obtain a Microsoft Artifact Signing certificate
+## Selected service: SignPath Foundation
 
-Microsoft renamed Trusted Signing to **Artifact Signing**. Use a **Public
-Trust** production certificate profile; Private Trust and Public Trust Test are
-not trusted by ordinary Windows computers.
+UQDA uses the free SignPath Foundation program for qualifying open-source
+projects. Microsoft lists SignPath Foundation as an open-source code-signing
+option. The certificate and private key are managed by SignPath in an HSM, so
+UQDA does not need Microsoft Artifact Signing, a PFX file, a USB token, or a
+Microsoft Azure account.
 
-1. Create or select an Azure subscription and Microsoft Entra tenant. The legal
-   name and address in Azure billing must match the identity that will appear on
-   the certificate.
-2. Register the `Microsoft.CodeSigning` resource provider.
-3. Create an Artifact Signing account in a supported region. A Basic account is
-   sufficient for this release pipeline unless the project needs Premium
-   capacity.
-4. In the account's **Access control (IAM)**, give the maintainer performing
-   identity verification the `Artifact Signing Identity Verifier` role.
-5. Under **Identity validations**, create a **Public** identity validation and
-   complete the legal-identity and email checks. Microsoft states that an
-   organization validation can take 1–20 business days. Individual Public
-   Trust enrollment is currently limited to developers in the United States
-   and Canada; organizations are supported in the countries listed in
-   Microsoft's current quickstart.
-6. After the validation status is `Completed`, create a certificate profile of
-   type **Public Trust**, for example `UqdaPublicRelease`.
+The Windows publisher shown to users is **SignPath Foundation**, which vouches
+that the signed files came from UQDA's public repository and trusted GitHub
+Actions build. Acceptance is subject to SignPath Foundation review and is not
+automatic.
 
-See Microsoft's official
-[Artifact Signing setup guide](https://learn.microsoft.com/azure/artifact-signing/quickstart).
+- Apply: https://signpath.org/apply
+- Program conditions: https://signpath.org/terms.html
+- GitHub integration: https://docs.signpath.io/trusted-build-systems/github
+- Public policy: [UQDA code signing policy](CODE_SIGNING_POLICY.md)
 
-Never create or upload a PFX for this path. Microsoft stores and rotates the
-signing key in its managed HSM; GitHub receives only a short-lived OIDC token.
+## One-time enrollment
 
-## Connect GitHub Actions without a client secret
+Only a UQDA repository owner can complete the external enrollment and approve
+signing requests.
 
-1. In Microsoft Entra ID, create an application registration and its service
-   principal.
-2. Add a federated credential for GitHub Actions. Restrict it to this repository
-   and the `main` branch. The subject is:
+1. Apply to SignPath Foundation with `https://github.com/Uqda/Core`.
+2. After approval, enable multi-factor authentication for the SignPath account
+   and install the SignPath GitHub App for `Uqda/Core`.
+3. In SignPath, add the predefined **GitHub.com** trusted build system and link
+   it to the UQDA project.
+4. Create two artifact configurations:
+   - one ZIP-root configuration that signs `uqda.exe` and `uqdactl.exe`;
+   - one ZIP-root configuration that signs the generated `.msi`.
+   GitHub's upload-artifact action stores each submission as a ZIP, so both
+   configurations must use a `zip-file` root. Require SHA-256 Authenticode
+   signing, RFC 3161 timestamping, product name **UQDA Core**, and one consistent
+   product version.
+5. Create a production signing policy restricted to this repository, the stable
+   release workflow, the `main` branch, and GitHub-hosted runners. Foundation
+   releases require manual approval by an authorized UQDA approver.
+6. Create an API token for a SignPath user that has submitter access to that
+   policy.
 
-   ```text
-   repo:Uqda/Core:ref:refs/heads/main
-   ```
+Do not store a certificate or private key in GitHub.
 
-3. On the Artifact Signing account (or, more narrowly, its certificate
-   profile), assign the service principal the
-   `Artifact Signing Certificate Profile Signer` role.
-4. Add these GitHub **Actions secrets** under
-   `Uqda/Core > Settings > Secrets and variables > Actions`:
+## GitHub Actions settings
 
-   - `AZURE_CLIENT_ID`
-   - `AZURE_TENANT_ID`
-   - `AZURE_SUBSCRIPTION_ID`
+Add one repository **Actions secret**:
 
-5. Add these GitHub **Actions variables**:
+- `SIGNPATH_API_TOKEN`
 
-   - `ARTIFACT_SIGNING_ENDPOINT` — the endpoint for the selected Azure region,
-     such as `https://weu.codesigning.azure.net/` for West Europe.
-   - `ARTIFACT_SIGNING_ACCOUNT_NAME`
-   - `ARTIFACT_SIGNING_CERTIFICATE_PROFILE_NAME`
+Add these repository **Actions variables**, using the exact values configured
+by SignPath:
 
-The workflow has only `contents: read` and `id-token: write` while signing. Do
-not add `AZURE_CLIENT_SECRET`; OIDC makes a stored client secret unnecessary.
+- `SIGNPATH_ORGANIZATION_ID`
+- `SIGNPATH_PROJECT_SLUG`
+- `SIGNPATH_SIGNING_POLICY_SLUG`
+- `SIGNPATH_EXECUTABLES_ARTIFACT_CONFIGURATION_SLUG`
+- `SIGNPATH_MSI_ARTIFACT_CONFIGURATION_SLUG`
 
-See Microsoft's official
-[Artifact Signing GitHub Action and OIDC guide](https://github.com/Azure/artifact-signing-action).
+The workflow intentionally fails before building release assets if any value is
+missing. The unsigned intermediate GitHub artifacts are clearly named
+`internal-unsigned-*`, retained for one day, and are never published in the
+stable release.
 
-## Release gate and installation test
+## Release gate
 
-For each x64, x86, and ARM64 Windows build, the stable-release workflow:
+For every x64, x86, and ARM64 Windows build, the stable-release workflow:
 
-1. builds `uqda.exe` and `uqdactl.exe`;
-2. signs and timestamps both executables;
-3. rejects either executable if PowerShell does not report `Valid`;
-4. packages the already-signed files without rebuilding them;
-5. signs and timestamps the MSI;
-6. rejects the MSI if its signature or timestamp is invalid; and
-7. on x64, silently installs the MSI, checks files, configuration, machine
-   `PATH`, service startup, version output, and `uqdactl getSelf`, then
-   uninstalls it and verifies that the service, binaries, and PATH entry were
-   removed while the node identity was preserved.
+1. builds `uqda.exe` and `uqdactl.exe` on a GitHub-hosted Windows runner;
+2. uploads those executables to the linked SignPath trusted build;
+3. waits for SignPath approval/signing and downloads the signed files;
+4. rejects either executable unless PowerShell reports a valid, timestamped
+   Authenticode signature;
+5. embeds those exact signed executables in the MSI without rebuilding;
+6. submits the MSI to SignPath and validates its returned signature/timestamp;
+7. silently installs the signed x64 MSI, checks files, configuration, machine
+   `PATH`, service startup, version output, and `uqdactl getSelf`; and
+8. uninstalls it and verifies removal of the service, binaries, and `PATH`
+   entry while preserving the node identity.
 
-Do not publish a Windows package by bypassing this job. A successful build of
-an unsigned MSI is useful only for pull-request testing, not for end users.
+The publish job cannot run unless all three signed Windows jobs and every other
+platform job succeed. Never bypass this gate.
 
-After downloading a published release, a user can independently verify it:
+## Independent verification
+
+After downloading a release:
 
 ```powershell
 $msi = Get-Item .\uqda-*-x64.msi
-Get-AuthenticodeSignature $msi.FullName | Format-List Status,StatusMessage,SignerCertificate
+Get-AuthenticodeSignature $msi.FullName |
+  Format-List Status, StatusMessage, SignerCertificate, TimeStamperCertificate
 ```
 
-`Status` must be `Valid`, and the publisher displayed by Windows must match the
-validated identity chosen for the UQDA certificate profile.
+`Status` must be `Valid`, the signer must be SignPath Foundation, and a
+timestamp certificate must be present.
