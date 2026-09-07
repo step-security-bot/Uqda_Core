@@ -1,21 +1,22 @@
 # Publishing a stable release
 
-Stable releases are intentionally driven by one versioned release-notes file.
-No Apple Developer account is required.
+The release version is selected by a versioned release-notes file. Package metadata and documentation must be updated in the same pull request.
+No Apple Developer account is required for an explicitly unsigned macOS release.
 
 ## Normal release path
 
 1. Choose a stable SemVer tag such as `v0.1.2`.
 2. Finish the code, tests, documentation, and `CHANGELOG.md` changes in a pull
    request.
-3. Add `.github/releases/v0.1.2.md` with the user-facing release notes. The
-   filename is the release version; there is no second version file to update.
-4. Merge only after all required checks pass.
-5. The `Stable Release` workflow selects the newest stable release-notes file,
+3. Add `.github/releases/v0.1.2.md` with the user-facing release notes. The filename is the release workflow's version source.
+4. Update `Casks/uqda.rb` to the same bare version and set its SHA-256 to the current `install.sh` digest.
+5. Confirm README, verification examples, and package metadata do not claim support or signatures that the workflow does not validate.
+6. Merge only after all required checks pass.
+7. The `Stable Release` workflow selects the newest stable release-notes file,
    reruns the release quality gate, builds every platform package, creates and
    signs `SHA256SUMS`, creates provenance attestations, and publishes the GitHub
    release and tag.
-6. Verify that the workflow and published release succeeded before announcing
+8. Verify that the workflow and published release succeeded before announcing
    the version.
 
 The publisher refuses to overwrite an existing release. Editing old notes will
@@ -37,8 +38,8 @@ installer. Never disable Gatekeeper globally.
 
 ## Homebrew Cask
 
-`Casks/uqda.rb` uses `version :latest` and invokes the stable release's
-`install.sh`. The installer, rather than the Cask, selects the native macOS
-architecture and verifies the downloaded package against `SHA256SUMS`. A new
-stable release therefore becomes available through Homebrew without editing a
-version or checksum in the Cask. Keep the Cask syntax/style CI job green.
+`Casks/uqda.rb` pins the stable version and the SHA-256 of that version's
+`install.sh`. The installer selects the native macOS architecture and verifies
+the downloaded package against `SHA256SUMS`. Every new stable release therefore
+requires the Cask version to be updated; update its checksum whenever
+`install.sh` changes. The Cask CI job checks this metadata as well as syntax and style.

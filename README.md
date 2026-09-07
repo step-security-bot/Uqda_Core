@@ -25,14 +25,6 @@ Read the [complete project guide](docs/PROJECT_GUIDE.md) for the architecture,
 identity and addressing model, routing, cryptography, security boundaries,
 configuration, every supported installation path, operation, and development.
 
-Want one box to serve every phone and computer at home? Follow the
-[UQDA home gateway guide](docs/HOME_GATEWAY.md) for Raspberry Pi OS,
-Debian/Ubuntu appliances, and the experimental OpenWrt profile.
-For a public visitor hotspot, use the hardened
-[UQDA café gateway profile](docs/CAFE_GATEWAY.md).
-For latency targets, peer selection, p95 measurement, and bufferbloat diagnosis,
-read the [performance guide](docs/PERFORMANCE.md).
-
 ## Features
 
 - End-to-end encrypted traffic between UQDA nodes.
@@ -41,7 +33,7 @@ read the [performance guide](docs/PERFORMANCE.md).
 - Peering over TCP, TLS, QUIC, WebSocket, secure WebSocket, SOCKS, and Unix sockets.
 - Optional local multicast discovery.
 - TUN integration for ordinary IPv6-capable applications.
-- Code and integrations for Linux, macOS, Windows, FreeBSD, OpenBSD, OpenWrt, EdgeRouter, and VyOS.
+- Runtime support and release integrations for Linux, macOS, Windows, FreeBSD, OpenBSD, EdgeOS, and VyOS; OpenWrt remains an unvalidated source-build target.
 - Local administration through `uqdactl`.
 
 ## How it works
@@ -67,7 +59,7 @@ The build produces:
 
 The release installer detects the operating system and CPU, selects the native
 package where available, verifies it against the release `SHA256SUMS`, and then
-uses the platform package manager. Stable releases also publish a Sigstore
+uses the platform's package or portable-install path. Stable releases also publish a Sigstore
 bundle for the checksum manifest and GitHub artifact attestations. Review the
 script before running it:
 
@@ -141,9 +133,10 @@ Depending on the installed architecture, the directory can instead be
 `C:\Program Files\UQDA`. The configuration and service log are under
 `$env:ProgramData\UQDA`.
 
-Windows assets ending in `-unsigned.msi` have passed the complete automated
-installation test but do not carry an Authenticode publisher signature. Managed
-Windows systems may block them according to local WDAC or AppLocker policy.
+Windows assets ending in `-unsigned.msi` do not carry an Authenticode publisher
+signature. The x64 installer is exercised end to end on a Windows runner; x86
+and ARM64 packages are build-validated but are not installed on native hardware
+in CI. Managed Windows systems may block unsigned files under WDAC or AppLocker.
 Future signed builds can use the documented SignPath Foundation path. See the
 [code signing policy](docs/CODE_SIGNING_POLICY.md), the
 [Windows release-signing setup](docs/windows-release-signing.md), and the
@@ -182,8 +175,8 @@ pass `--yes`. This deletion cannot be undone.
 Supported release paths are systemd-based Debian/Ubuntu, Fedora and immutable
 Fedora derivatives such as Bazzite, macOS, EdgeOS 2.x, VyOS 1.3, and the listed
 portable Linux/FreeBSD/OpenBSD targets. Windows users should download the
-matching `.msi` asset from the release. OpenWrt is not yet included in the
-one-command installer and remains an explicitly unvalidated release target.
+matching `.msi` asset from the release. OpenWrt is not included in the one-command installer and remains an
+unvalidated source-build target.
 
 The project does not currently have a paid Apple Developer account. macOS
 packages are therefore published with `-unsigned.pkg` in their filename and

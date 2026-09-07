@@ -16,13 +16,13 @@ signature on the executable or installer they launch.
 
 ## Optional future service: SignPath Foundation
 
-UQDA uses the free SignPath Foundation program for qualifying open-source
-projects. Microsoft lists SignPath Foundation as an open-source code-signing
+The workflow is prepared to use the free SignPath Foundation program for qualifying open-source
+projects, but repository support does not mean enrollment has been approved or enabled. Microsoft lists SignPath Foundation as an open-source code-signing
 option. The certificate and private key are managed by SignPath in an HSM, so
 UQDA does not need Microsoft Artifact Signing, a PFX file, a USB token, or a
 Microsoft Azure account.
 
-The Windows publisher shown to users is **SignPath Foundation**, which vouches
+When that path is enabled successfully, the Windows publisher shown to users is expected to be **SignPath Foundation**, which vouches
 that the signed files came from UQDA's public repository and trusted GitHub
 Actions build. Acceptance is subject to SignPath Foundation review and is not
 automatic.
@@ -34,8 +34,7 @@ automatic.
 
 ## One-time enrollment
 
-Only a UQDA repository owner can complete the external enrollment and approve
-signing requests.
+A UQDA repository owner must complete the external enrollment. SignPath decides eligibility, and an authorized external approver handles production requests.
 
 1. Apply to SignPath Foundation with `https://github.com/Uqda/Core`.
 2. After approval, enable multi-factor authentication for the SignPath account

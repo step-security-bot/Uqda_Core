@@ -1,10 +1,10 @@
 # Verifying UQDA releases
 
-UQDA release assets are expected to be authenticated before installation. A checksum by itself only detects accidental corruption or a mismatch with the published manifest; it does not prove who published that manifest.
+Authenticate the release manifest and verify each selected UQDA asset against it before installation. A checksum by itself only detects accidental corruption or a mismatch with the published manifest; it does not prove who published that manifest.
 
 ## Trust signals
 
-Each newly signed release publishes:
+Each stable release produced by the current workflow publishes:
 
 - `SHA256SUMS` — SHA-256 digests for release assets;
 - `SHA256SUMS.sigstore.json` — a Sigstore bundle for the checksum manifest; and
@@ -17,7 +17,7 @@ The Sigstore signature is keyless. GitHub Actions obtains a short-lived OIDC ide
 Set the release tag and download the installer plus its verification metadata:
 
 ```bash
-TAG=v0.1.1
+TAG=v0.1.9 # replace with the release you are installing
 BASE="https://github.com/Uqda/Core/releases/download/$TAG"
 
 curl -fSLO "$BASE/SHA256SUMS"
@@ -49,14 +49,14 @@ On macOS, use `shasum -a 256` to compare the downloaded file with the digest in 
 GitHub CLI can independently verify the provenance attestation associated with a downloaded artifact:
 
 ```bash
-gh attestation verify ./uqda-v0.1.1-linux-amd64.tar.gz -R Uqda/Core
+gh attestation verify ./uqda-v0.1.9-linux-amd64.tar.gz -R Uqda/Core
 ```
 
 This checks that GitHub has a valid signed attestation for the artifact digest and that it belongs to `Uqda/Core`.
 
 ## What this protects against
 
-The signed manifest prevents an attacker who can only replace release assets or rewrite `SHA256SUMS` from silently substituting a different binary without also producing a valid signing identity. The GitHub attestation provides a separate provenance record for the artifact digest.
+The signed manifest lets users detect a replaced asset or rewritten `SHA256SUMS` unless the attacker can also produce a valid workflow identity. The GitHub attestation provides a separate provenance record for the artifact digest.
 
 This does **not** make repository governance irrelevant. If an attacker can directly modify `main` and the release workflow, they may be able to execute a workflow under the repository's own GitHub OIDC identity. For that reason, protect `main`, require successful CI before merge, and tightly control changes to `.github/workflows/release-beta.yml`.
 

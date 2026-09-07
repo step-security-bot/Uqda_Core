@@ -29,16 +29,9 @@
 
 ## v0.1.4
 
-- Added consistent, accessible terminal colors to `uqdactl`, `uqda-latency`,
-  and `uqda-gateway`, with automatic TTY detection, `NO_COLOR`, explicit
-  always/never modes, plain redirected output, and color-free JSON.
-- Improved visual hierarchy for administration tables, doctor status,
-  peer state and RTT, gateway outcomes, and latency results without relying on
-  color alone.
-- Fixed interrupted `uqda-latency` measurements so `Ctrl+C` exits with status
-  130, cleans temporary files, and no longer reports a missing `times.txt`.
-- Added deterministic tests for color policy, ANSI-safe table alignment,
-  redirected/JSON output, `NO_COLOR`, and interrupted measurement cleanup.
+- Added consistent, accessible terminal colors to `uqdactl`, with automatic TTY detection, `NO_COLOR`, explicit always/never modes, plain redirected output, and color-free JSON.
+- Improved visual hierarchy for administration tables, doctor status, and peer state and RTT without relying on color alone.
+- Added deterministic tests for color policy, ANSI-safe table alignment, redirected/JSON output, and `NO_COLOR`.
 
 ## v0.1.3
 
@@ -55,15 +48,8 @@
 
 ## v0.1.2
 
-- Added `uqda-gateway` with safe plan/apply/status/rollback workflows for
-  Raspberry Pi OS, Debian/Ubuntu, and an experimental OpenWrt profile.
-- Added a hardened café hotspot mode with client isolation, host/private-network
-  firewalling, explicit public-use acknowledgement, and recovery guidance.
-- Added `uqda-latency` for loss, percentile, jitter, and target measurement.
-- Added latency sorting to `uqdactl getPeers` and documented nearby/direct peer
-  selection plus SQM/CAKE bufferbloat diagnosis.
-- Added the project Homebrew Cask, comprehensive project documentation, and
-  checksum-covered gateway/performance helpers to stable releases.
+- Added latency sorting to `uqdactl getPeers`.
+- Added the project Homebrew Cask and comprehensive project documentation.
 
 ## v0.1.1
 

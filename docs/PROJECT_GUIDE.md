@@ -439,13 +439,13 @@ sh install.sh --dry-run
 | Fedora and systemd Linux | Verified installer selects portable archive | installs binaries and creates/enables a systemd service |
 | Other Linux | Portable archive where the CPU is published | binaries install to `/usr/local/bin`; service setup depends on the host |
 | macOS Apple Silicon/Intel | Verified unsigned `.pkg`, or Homebrew Cask | launchd; `/etc/uqda.conf`; `/var/run/uqda.sock` |
-| Windows x64/x86/ARM64 | Download matching `.msi` from the release | LocalSystem service; config under `%ProgramData%\UQDA` |
+| Windows x64/x86/ARM64 | Download matching `.msi` from the release | LocalSystem service; x64 is install-tested in CI, x86/ARM64 are build-validated |
 | FreeBSD amd64/arm64 | Verified portable archive | config under `/usr/local/etc`; finish rc service setup |
 | OpenBSD amd64/arm64 | Verified portable archive | config under `/etc`; finish `rcctl` setup |
 | EdgeOS 2.x | Verified target-specific `.deb` | Vyatta-style `interfaces uqda` integration |
 | VyOS 1.3 | Verified target-specific `.deb` | one service/config/admin socket per UQDA interface |
 | Docker | Build the supplied Dockerfile | requires TUN device and `NET_ADMIN` |
-| OpenWrt | Source/integration code only | not in the one-command installer and not release-validated |
+| OpenWrt | Linux-compatible source build only | not in the one-command installer and not release-validated |
 | Mobile embedding | Go mobile wrapper exists | integration API, not a general end-user release package |
 
 ### macOS
@@ -471,11 +471,10 @@ brew install --cask uqda/core/uqda
 ```
 
 Homebrew requires explicit trust for third-party executable Casks. Trusting
-only `uqda/core/uqda` is narrower than trusting the complete tap. The Cask uses
-`version :latest`, so Homebrew warns that the small installer-script download
-has no fixed Cask checksum; the script then verifies the selected UQDA package
-against the release `SHA256SUMS`. For publisher-identity verification, use the
-Sigstore procedure later in this guide.
+only `uqda/core/uqda` is narrower than trusting the complete tap. The Cask pins
+a stable version and the SHA-256 of that version's `install.sh`; the installer
+then verifies the selected UQDA package against the release `SHA256SUMS`. For
+publisher-identity verification, use the Sigstore procedure later in this guide.
 
 ### Windows
 
@@ -516,7 +515,9 @@ cd "C:\Program Files (x86)\UQDA"
 ```
 
 The x64 and ARM64 packages normally use `C:\Program Files\UQDA`; x86 normally
-uses `C:\Program Files (x86)\UQDA`. Standard MSI uninstall removes the service,
+uses `C:\Program Files (x86)\UQDA`. CI performs a complete install, service,
+command, PATH, and uninstall test for x64. The x86 and ARM64 MSIs are built and
+inspected but are not installed on native hardware in CI. Standard MSI uninstall removes the service,
 binaries, Wintun payload, and PATH entry while preserving `%ProgramData%\UQDA`
 so a later reinstall keeps the same node identity.
 
@@ -974,17 +975,19 @@ Repository CI adds:
 - CodeQL analysis;
 - reachable dependency/standard-library vulnerability scanning;
 - handshake fuzzing;
-- Linux, macOS, Windows, FreeBSD, and OpenBSD builds/tests;
+- Linux, macOS, and Windows builds/tests, plus FreeBSD and OpenBSD cross-builds;
 - parser, concurrency, and security regression coverage;
 - two-node, multi-hop, failover, loss/latency, and secure-required E2E meshes;
 - package and installer validation; and
 - Homebrew Cask syntax/style validation.
 
-Stable releases are driven by one `.github/releases/vX.Y.Z.md` file. After a
-tested pull request is merged, the Stable Release workflow resolves the newest
-stable notes, reruns quality gates, builds the platform matrix, creates and
-signs `SHA256SUMS`, emits provenance attestations, and publishes the immutable
-tag/release. The workflow refuses to overwrite an existing release.
+The release version is selected from `.github/releases/vX.Y.Z.md`; the same
+release pull request must update `Casks/uqda.rb` to that version and the current
+`install.sh` checksum. After merge, the Stable Release workflow reruns quality
+gates, builds the platform matrix, creates and signs `SHA256SUMS`, emits
+provenance attestations, and creates the tag and release. The workflow refuses
+to overwrite an existing release, although repository administrators can still
+edit or remove published assets manually.
 
 No Apple Developer account is required. Without Apple credentials, macOS
 artifacts remain explicitly unsigned; if valid credentials are added later,

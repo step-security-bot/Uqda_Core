@@ -24,7 +24,7 @@ Example: `tls://peer.example:9001?secure=required`.
 
 ## Release integrity and provenance
 
-New releases are designed to publish three independent integrity signals:
+Stable releases produced by the current workflow publish three complementary integrity signals:
 
 - `SHA256SUMS`, containing the SHA-256 digest of every release asset;
 - `SHA256SUMS.sigstore.json`, a Sigstore bundle containing the keyless signature, signing certificate, and transparency-log proof for the checksum manifest; and
@@ -45,4 +45,4 @@ After the manifest is authenticated, verify a downloaded asset against `SHA256SU
 gh attestation verify ./uqda-RELEASE-ASSET -R Uqda/Core
 ```
 
-The release workflow refuses to publish from any ref other than `refs/heads/main`. Repository branch protection is also part of this trust model: direct or insufficiently reviewed modification of `main` or the release workflow would weaken the value of workload-identity signing. Keep `main` protected, require CI before merge, and restrict who can modify release workflows.
+The release workflow refuses to publish from any ref other than `refs/heads/main` and refuses to overwrite an existing release. Repository administrators can still edit release metadata or assets manually, so users must verify the signed manifest rather than relying on the release page alone. Repository branch protection is also part of this trust model: direct or insufficiently reviewed modification of `main` or the release workflow would weaken the value of workload-identity signing. Keep `main` protected, require CI before merge, and restrict who can modify release workflows.
