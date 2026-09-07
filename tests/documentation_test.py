@@ -23,6 +23,34 @@ RETIRED_REFERENCES = (
 
 MARKDOWN_LINK = re.compile(r"!?(?:\[[^\]]*\])\(([^)]+)\)")
 
+NETWORK_GUIDE = ROOT / "docs" / "NETWORK_GUIDE_AR.md"
+PLATFORM_FACTS = {
+    "src/config/defaults_linux.go": (
+        "unix:///var/run/uqda.sock",
+        "/etc/uqda.conf",
+        "65535",
+    ),
+    "src/config/defaults_darwin.go": (
+        "unix:///var/run/uqda.sock",
+        "/etc/uqda.conf",
+        "65535",
+    ),
+    "src/config/defaults_windows.go": (
+        "tcp://localhost:9001",
+        "65535",
+    ),
+    "src/config/defaults_freebsd.go": (
+        "/usr/local/etc/uqda.conf",
+        "/dev/tun0",
+        "32767",
+    ),
+    "src/config/defaults_openbsd.go": (
+        "/etc/uqda.conf",
+        "tun0",
+        "16384",
+    ),
+}
+
 
 def tracked_files() -> list[Path]:
     output = subprocess.check_output(
@@ -79,10 +107,38 @@ def check_markdown_links(files: list[Path]) -> list[str]:
     return errors
 
 
+def check_network_guide_platform_facts() -> list[str]:
+    """Keep documented paths, endpoints, interface names and MTUs in sync."""
+    errors: list[str] = []
+    guide = NETWORK_GUIDE.read_text(encoding="utf-8")
+    for source_name, facts in PLATFORM_FACTS.items():
+        source = (ROOT / source_name).read_text(encoding="utf-8")
+        for fact in facts:
+            if fact not in source:
+                errors.append(
+                    f"{source_name} no longer contains documented platform fact: {fact}"
+                )
+            if fact not in guide:
+                errors.append(
+                    f"{NETWORK_GUIDE.relative_to(ROOT)} is missing platform fact: {fact}"
+                )
+    windows_doc_facts = (
+        r"%ProgramData%\UQDA\uqda.conf",
+        r"%ProgramData%\UQDA\uqda.log",
+    )
+    for fact in windows_doc_facts:
+        if fact not in guide:
+            errors.append(
+                f"{NETWORK_GUIDE.relative_to(ROOT)} is missing Windows fact: {fact}"
+            )
+    return errors
+
+
 def main() -> int:
     files = tracked_files()
     errors = check_retired_references(files)
     errors.extend(check_markdown_links(files))
+    errors.extend(check_network_guide_platform_facts())
     if errors:
         for error in errors:
             print(f"documentation error: {error}")

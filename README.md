@@ -24,6 +24,8 @@
 Read the [complete project guide](docs/PROJECT_GUIDE.md) for the architecture,
 identity and addressing model, routing, cryptography, security boundaries,
 configuration, every supported installation path, operation, and development.
+An [Arabic network operations guide](docs/NETWORK_GUIDE_AR.md) covers the same
+runtime model with platform-specific commands and troubleshooting.
 
 ## Features
 

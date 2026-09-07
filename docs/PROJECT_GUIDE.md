@@ -4,6 +4,8 @@ This document explains what UQDA Core is, how its components fit together,
 how identity, routing, and encryption work, and how to install, configure,
 operate, verify, and develop the project. It is written for users, network
 operators, reviewers, and contributors who want more than a quick-start.
+For a platform-by-platform Arabic operations guide, see
+[دليل شبكة عُقَد الكامل](NETWORK_GUIDE_AR.md).
 
 > [!IMPORTANT]
 > UQDA has not been independently security-audited. It is an encrypted IPv6
