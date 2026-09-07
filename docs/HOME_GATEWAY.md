@@ -1,145 +1,50 @@
 # UQDA Home Gateway
 
-An UQDA home gateway runs one UQDA node on a router or small computer and
-shares it with phones, tablets, televisions, and computers over Wi-Fi. Client
-devices do not need the UQDA application. They receive an address from the
-node's routed UQDA `/64` using standard IPv6 Router Advertisements and SLAAC.
+A Linux or OpenWrt router can run UQDA and route its assigned IPv6 subnet to
+devices on a trusted home LAN. UQDA Core itself does not create Wi-Fi access
+points, edit firewall rules, or configure Router Advertisements. Those settings
+must be managed with the operating system's supported network tools.
 
-For a public or commercial visitor network, use the hardened
-[UQDA café gateway profile](CAFE_GATEWAY.md) instead of the home profile.
+## Before configuring a gateway
 
-## What it does
+- Install and start UQDA on the router.
+- Confirm `uqdactl getSelf` reports an IPv6 address and a routed `/64`.
+- Confirm `uqdactl getPeers` shows at least one working peer.
+- Keep Ethernet or local-console access available while changing networking.
+- Back up NetworkManager, firewall, DHCP, and OpenWrt UCI configuration.
+- Identify the WAN and LAN interfaces explicitly; never guess them.
 
-- ordinary websites continue to use the normal ISP connection;
-- UQDA IPv6 destinations are routed through the encrypted overlay;
-- the gateway supplies normal IPv4 Internet sharing to Wi-Fi clients; and
-- UQDA's administrator API remains on the local Unix socket.
+## Required network behavior
 
-This is not an anonymity service and it is not an Internet exit VPN. Sending
-all public Internet traffic through a remote machine requires a separately
-operated and trusted exit gateway, DNS policy, abuse controls, and additional
-firewall rules.
+The router configuration must:
 
-## Recommended hardware
+1. enable IPv6 forwarding;
+2. assign one address from the UQDA `/64` to the trusted LAN;
+3. advertise that prefix to clients using IPv6 Router Advertisements;
+4. route the UQDA address range through the UQDA TUN interface;
+5. preserve ordinary Internet connectivity independently; and
+6. keep the UQDA administration endpoint local to the router.
 
-| Profile | Suggested device | WAN | Home devices | Status |
-|---|---|---|---|---|
-| Raspberry Pi | Raspberry Pi 4 or 5, 2 GB+, quality power supply | Ethernet | onboard Wi-Fi | primary reference profile |
-| Linux appliance | x86-64/ARM64 mini PC, 2 GB+, AP-capable Wi-Fi | Ethernet | Wi-Fi | supported through NetworkManager |
-| OpenWrt router | supported CPU, TUN, at least 128 MB RAM and free storage | existing `wan` zone | one radio | experimental until tested per model |
+Use NetworkManager, radvd, nftables, or OpenWrt UCI according to the platform's
+documentation. Do not copy a configuration between devices without reviewing
+interface names, firewall zones, regulatory country, and recovery access.
 
-A separate USB Wi-Fi adapter may be preferable when the device's onboard
-radio cannot operate reliably as an access point. Never attempt initial setup
-over the same Wi-Fi interface that will be converted into the access point;
-use Ethernet or a local console.
+## Acceptance tests
 
-## Raspberry Pi OS, Debian, or Ubuntu
+Before relying on the gateway:
 
-Raspberry Pi OS uses NetworkManager. Debian or Ubuntu installations must also
-have NetworkManager controlling the selected Wi-Fi device. Install UQDA first,
-then install the gateway dependencies:
+- reboot it and confirm UQDA and the network configuration return;
+- confirm a client receives an address from the routed UQDA subnet;
+- reach a known UQDA peer from that client;
+- confirm ordinary Internet access still works;
+- confirm the UQDA administration endpoint is not reachable from Wi-Fi; and
+- restore the saved configuration to prove the recovery procedure works.
 
-```sh
-sudo apt update
-sudo apt install network-manager radvd iw
-curl -fsSLO https://github.com/Uqda/Core/releases/latest/download/uqda-gateway
-chmod +x uqda-gateway
-sudo install -m 0755 uqda-gateway /usr/local/sbin/uqda-gateway
-```
+Wi-Fi chips, drivers, regulatory domains, and OpenWrt packages vary. Treat a
+router model as supported only after these tests pass on that exact hardware.
 
-List interfaces and Wi-Fi capabilities:
+## Security
 
-```sh
-ip -brief link
-nmcli device status
-nmcli -f WIFI-PROPERTIES.AP device show wlan0
-```
-
-Create the password without putting it in shell history. Replace the interface
-names and country code with the values for the device:
-
-```sh
-umask 077
-read -r -s -p "Wi-Fi password: " UQDA_WIFI_PASSWORD; echo
-printf '%s\n' "$UQDA_WIFI_PASSWORD" > /tmp/uqda-wifi-password
-unset UQDA_WIFI_PASSWORD
-
-uqda-gateway plan --wan eth0 --lan wlan0 --ssid Home-UQDA --country DE
-sudo uqda-gateway apply --wan eth0 --lan wlan0 --ssid Home-UQDA \
-  --country DE --password-file /tmp/uqda-wifi-password
-rm -f /tmp/uqda-wifi-password
-```
-
-The gateway helper uses semantic colors only on an interactive terminal. It
-keeps redirected logs plain, respects `NO_COLOR`, and accepts
-`--color auto|always|never` or `--no-color`. Every colored state also includes
-text so logs and accessibility tools retain the complete meaning.
-
-Use the correct two-letter regulatory country. The tool refuses to guess WAN
-and Wi-Fi interfaces. It creates only a connection named `uqda-gateway` and
-owned files under `/var/lib/uqda-gateway` so removal is targeted.
-
-## OpenWrt
-
-The OpenWrt profile requires working `uqda`, `uqdactl`, UCI, odhcpd, firewall,
-TUN support, and sufficient device resources. UQDA's generic release installer
-does not currently install OpenWrt packages automatically, so treat this
-profile as experimental and validate it on the exact router model before home
-use.
-
-Copy `uqda-gateway` to `/usr/sbin`, identify the WAN firewall zone and radio,
-then run:
-
-```sh
-ip link show
-uci show wireless
-uci show firewall | grep "\.name='wan'"
-
-uqda-gateway plan --backend openwrt --wan wan --lan radio0 --ssid Home-UQDA
-uqda-gateway apply --backend openwrt --wan wan --lan radio0 \
-  --ssid Home-UQDA --country DE --password-file /root/uqda-wifi-password
-rm -f /root/uqda-wifi-password
-```
-
-The profile creates an isolated `192.168.82.0/24` LAN, WPA2/WPA3 mixed-mode
-Wi-Fi, DHCP, IPv6 RA/DHCPv6, and forwarding from that LAN to the selected WAN
-zone. UQDA supplies the routed IPv6 `/64`.
-
-## Check and recover
-
-```sh
-sudo uqda-gateway status
-sudo uqdactl getSelf
-sudo uqdactl getPeers
-```
-
-On a connected client, confirm it has both an ordinary private IPv4 address and
-an UQDA IPv6 address from the gateway's `3xx:` subnet. Then ping a known UQDA
-peer. A peer being `Up` on the gateway is not enough: the client test confirms
-Router Advertisements and forwarding work end to end.
-
-To remove only the configuration owned by this tool:
-
-```sh
-sudo uqda-gateway rollback
-```
-
-Keep local-console or Ethernet access during the first application. OpenWrt
-rollback imports the configuration snapshots saved before the most recent
-apply. NetworkManager rollback deletes the `uqda-gateway` connection and its
-owned sysctl/radvd files; it does not modify unrelated connections.
-
-## Security checklist
-
-- use a unique 16+ character Wi-Fi password and WPA3 where every client supports it;
-- keep OpenWrt/Linux and UQDA updated;
-- do not expose the UQDA admin socket through TCP or Wi-Fi;
-- firewall services on the gateway and clients;
-- do not assume overlay encryption makes an application trustworthy; and
-- test upgrades on a spare device before updating the household gateway.
-
-The automation has deterministic tests, but Wi-Fi chips, drivers, regulatory
-domains, and OpenWrt device packages vary. A release should not claim a router
-model is validated until installation, reboot persistence, client SLAAC,
-ordinary Internet access, UQDA peer reachability, and rollback have all been
-tested on that model.
+Use a strong Wi-Fi password, apply an IPv6 firewall to the router and clients,
+and keep the operating system and UQDA updated. Overlay encryption does not make
+applications trustworthy and does not replace LAN isolation or host firewalls.

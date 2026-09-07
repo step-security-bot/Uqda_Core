@@ -47,25 +47,9 @@ jobs:
           UQDA_TEST_VERSION: ${{ env.UQDA_VERSION }}
         run: sh tests/install_test.sh
       - name: Shell syntax
-        run: sh -n install.sh updater.sh uninstall.sh tests/install_test.sh tests/uninstall_test.sh contrib/gateway/uqda-gateway contrib/performance/uqda-latency tests/gateway_test.sh tests/latency_test.sh
-      - name: Network helper tests
-        run: |
-          sh tests/gateway_test.sh
-          sh tests/latency_test.sh
+        run: sh -n install.sh updater.sh uninstall.sh tests/install_test.sh tests/uninstall_test.sh
       - name: Uninstaller safety tests
         run: sh tests/uninstall_test.sh
-      - name: Stage network helpers
-        run: |
-          cp contrib/gateway/uqda-gateway uqda-gateway
-          cp contrib/performance/uqda-latency uqda-latency
-          chmod 0755 uqda-gateway uqda-latency
-      - uses: actions/upload-artifact@v7
-        with:
-          name: network-helpers
-          path: |
-            uqda-gateway
-            uqda-latency
-          if-no-files-found: error
 
   portable:
     name: Portable (${{ matrix.os }}, ${{ matrix.arch }})
