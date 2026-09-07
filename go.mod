@@ -1,6 +1,6 @@
 module github.com/Uqda/Core
 
-go 1.25.13
+go 1.26.0
 
 // Local patch: serialize Ironwood peer debug snapshots with the peer actor to
 // avoid racing RTT updates. Remove after the fix is available upstream.
@@ -13,12 +13,12 @@ require (
 	github.com/coder/websocket v1.8.15
 	github.com/gologme/log v1.3.0
 	github.com/hashicorp/go-syslog v1.0.0
-	github.com/hjson/hjson-go/v4 v4.7.0
+	github.com/hjson/hjson-go/v4 v4.7.1
 	github.com/kardianos/minwinsvc v1.0.2
 	github.com/quic-go/quic-go v0.60.0
 	github.com/vishvananda/netlink v1.3.1
 	github.com/wlynxg/anet v0.0.5
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/net v0.58.0
 	golang.org/x/sys v0.47.0
 	golang.org/x/text v0.41.0
