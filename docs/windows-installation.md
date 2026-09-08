@@ -2,8 +2,8 @@
 
 ## Release boundary
 
-These changes describe the next build from this source, not a repair already
-applied to downloaded v0.1.9 MSI files. Do not relabel old files as fixed or signed.
+The installer isolation changes start with v0.1.10. They do not repair already
+downloaded v0.1.9 MSI files. Do not relabel old files as fixed or signed.
 
 UQDA used upstream MSI family/component identifiers and the upstream requested
 Wintun adapter GUID. This was a packaging/isolation defect. The new package uses

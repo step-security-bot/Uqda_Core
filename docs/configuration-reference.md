@@ -119,7 +119,7 @@ discovery, so provision a reachable peer if remote connectivity is needed.
 
 See the [platform defaults table](PROJECT_GUIDE.md#platform-defaults) and
 [OS-specific service commands](NETWORK_GUIDE_AR.md#التثبيت-والتشغيل-حسب-النظام).
-Windows source after PR #48 defaults to `tcp://localhost:19001`; published
+Windows starting with v0.1.10 defaults to `tcp://localhost:19001`; published
 v0.1.9 packages still use the older default. Explicit existing `AdminListen`
 values are preserved. Read [Windows migration](windows-installation.md).
 

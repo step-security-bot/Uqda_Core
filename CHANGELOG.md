@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## v0.1.10
+
+- Isolated UQDA's MSI family, file components, Wintun adapter identity and
+  Windows default admin endpoint (localhost:19001) from Yggdrasil.
+- Added a legacy-installation migration guard instead of upgrading the old
+  MSI family shared with upstream. Existing configurations remain preserved.
+- Stopped removing the shared Wintun driver on TUN creation failure.
+- Added privileged configuration preparation and parse checks before service
+  startup, preserving invalid existing configurations for diagnosis.
+- Added x64 installation/coexistence, upgrade, invalid-config repair and
+  uninstall regression tests alongside pinned Yggdrasil 0.5.14.
+- Added source-backed configuration/API references, bilingual documentation
+  navigation and explicit upstream attribution/compatibility explanations.
+- Documented Windows local TCP administration limits and unsigned-package
+  trust boundaries. No new Authenticode identity is introduced by this release.
+- Explicitly configure WiX 3 in the Windows release build environment.
+
 ## v0.1.7
 
 - Made uninstaller dry-run output explicitly state that actions are planned and

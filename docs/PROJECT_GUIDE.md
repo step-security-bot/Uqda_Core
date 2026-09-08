@@ -485,7 +485,7 @@ publisher-identity verification, use the Sigstore procedure later in this guide.
 
 For the new Windows MSI family, legacy migration, coexistence and diagnostic
 details, read [Windows installation and trust](windows-installation.md).
-These source changes are not present in already downloaded v0.1.9 installers.
+These changes start with v0.1.10 and are not present in downloaded v0.1.9 installers.
 
 Download the MSI matching the machine (`x64`, `x86`, or `arm64`) from the
 latest release and run it as an administrator. The package installs `uqda.exe`,
