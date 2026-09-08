@@ -1,5 +1,8 @@
 # UQDA Core: complete project guide
 
+[Documentation index](README.md) · [Configuration reference](configuration-reference.md)
+· [Administration API](admin-api.md) · [Upstream comparison](UPSTREAM_COMPARISON_AR.md)
+
 This document explains what UQDA Core is, how its components fit together,
 how identity, routing, and encryption work, and how to install, configure,
 operate, verify, and develop the project. It is written for users, network

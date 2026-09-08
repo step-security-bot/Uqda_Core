@@ -19,6 +19,11 @@
 
 ## Project status
 
+Start with the [documentation index](docs/README.md): concepts, platform guides,
+configuration reference, administration API and upstream compatibility.
+UQDA is derived from Yggdrasil and maintained independently; inherited network
+features should not be presented as UQDA inventions.
+
 **The latest stable UQDA release is recommended for supported platforms.** The project has not been independently security-audited and should not be treated as an anonymity system. Use an IPv6 firewall and avoid exposing services that should not be reachable by other network participants.
 
 Read the [complete project guide](docs/PROJECT_GUIDE.md) for the architecture,

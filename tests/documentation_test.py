@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+import json
 import subprocess
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -134,11 +135,44 @@ def check_network_guide_platform_facts() -> list[str]:
     return errors
 
 
+def check_configuration_and_api_references() -> list[str]:
+    errors: list[str] = []
+    source = (ROOT / "src/config/config.go").read_text(encoding="utf-8")
+    reference = (ROOT / "docs/configuration-reference.md").read_text(encoding="utf-8")
+    for struct in ("NodeConfig", "MulticastInterfaceConfig"):
+        body = re.search(r"type " + struct + r" struct \{(.*?)\n\}", source, re.S)
+        if body is None:
+            errors.append(f"configuration structure {struct} was not found")
+            continue
+        for line in body.group(1).splitlines():
+            field = re.match(r"\s+(\w+)\s+", line)
+            if field and 'json:"-"' not in line:
+                if f"| `{field.group(1)}` |" not in reference:
+                    errors.append(f"configuration reference lacks {struct}.{field.group(1)}")
+    if "https://Uqda.github.io/configurationref.html" in source:
+        errors.append("generated configuration still links to the old website reference")
+    if "TCP/9001" in source:
+        errors.append("generated configuration describes the old Windows admin default")
+    api = (ROOT / "docs/admin-api.md").read_text(encoding="utf-8")
+    for block in re.findall(r"```json\n(.*?)\n```", api, re.S):
+        try:
+            request = json.loads(block)
+        except json.JSONDecodeError as exc:
+            errors.append(f"admin API example is invalid JSON: {exc}")
+            continue
+        if not isinstance(request, dict) or not isinstance(request.get("arguments"), dict):
+            errors.append("admin API example must use a nested arguments object")
+        elif set(request) - {"request", "arguments", "keepalive"}:
+            errors.append("admin API example has unsupported top-level fields")
+    return errors
+
+
 def main() -> int:
     files = tracked_files()
     errors = check_retired_references(files)
     errors.extend(check_markdown_links(files))
     errors.extend(check_network_guide_platform_facts())
+    errors.extend(check_configuration_and_api_references())
     if errors:
         for error in errors:
             print(f"documentation error: {error}")
