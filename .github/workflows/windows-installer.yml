@@ -1,0 +1,75 @@
+name: Windows installer isolation
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Use runner WiX 3 tools
+        shell: powershell
+        run: |
+          $bin = Join-Path $env:WIX 'bin'
+          if (-not (Test-Path "$bin\candle.exe")) { throw 'WiX 3 is not installed on this runner' }
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Build two test-only upgrade versions
+        shell: bash
+        run: |
+          UQDA_VERSION=v0.0.100 sh contrib/msi/build-msi.sh x64
+          UQDA_VERSION=v0.0.101 sh contrib/msi/build-msi.sh x64
+      - name: Fetch pinned upstream comparison package
+        shell: powershell
+        run: |
+          $url = 'https://github.com/yggdrasil-network/yggdrasil-go/releases/download/v0.5.14/yggdrasil-0.5.14-x64.msi'
+          Invoke-WebRequest $url -OutFile yggdrasil-reference.msi
+          $expected = '8a871a037040094c793b08447e98815ff90040fa6c4c0d094b64f7f8e3f3a93d'
+          if ((Get-FileHash yggdrasil-reference.msi -Algorithm SHA256).Hash -ne $expected) {
+            throw 'Upstream comparison package SHA256 mismatch'
+          }
+          Get-AuthenticodeSignature yggdrasil-reference.msi | Select-Object Status,StatusMessage
+      - name: Test real installs, isolation, upgrade and config preservation
+        shell: powershell
+        run: |
+          ./contrib/msi/test-coexistence.ps1 -YggMsiPath ./yggdrasil-reference.msi -MsiPath ./uqda-0.0.100-x64.msi -UpgradeMsiPath ./uqda-0.0.101-x64.msi
+      - name: Collect diagnostic logs into one directory
+        if: always()
+        shell: powershell
+        run: |
+          $dest = Join-Path $env:RUNNER_TEMP 'uqda-installer-logs'
+          New-Item -ItemType Directory -Path $dest -Force | Out-Null
+          Get-ChildItem -Path "$env:RUNNER_TEMP\uqda-*.log" -File -ErrorAction SilentlyContinue |
+            Copy-Item -Destination $dest
+          foreach ($item in @(
+            @{ Path = "$env:ProgramData\UQDA\install-config-error.log"; Name = 'config-error.log' },
+            @{ Path = "$env:ProgramData\UQDA\uqda.log"; Name = 'uqda-service.log' },
+            @{ Path = "$env:ProgramData\Yggdrasil\yggdrasil.log"; Name = 'yggdrasil-service.log' }
+          )) {
+            if (Test-Path -LiteralPath $item.Path) {
+              Copy-Item -LiteralPath $item.Path -Destination (Join-Path $dest $item.Name)
+            }
+          }
+      - name: Preserve diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-installer-test-logs
+          path: ${{ runner.temp }}/uqda-installer-logs/
+          if-no-files-found: ignore

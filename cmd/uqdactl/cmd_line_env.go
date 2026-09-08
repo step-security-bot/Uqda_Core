@@ -39,7 +39,7 @@ func (cmdLineEnv *CmdLineEnv) parseFlagsAndArgs() {
 		fmt.Println("Examples:")
 		fmt.Println("  - ", os.Args[0], "list")
 		fmt.Println("  - ", os.Args[0], "getPeers")
-		fmt.Println("  - ", os.Args[0], "-endpoint=tcp://localhost:9001 getPeers")
+		fmt.Println("  - ", os.Args[0], "-endpoint="+config.GetDefaults().DefaultAdminListen, "getPeers")
 		fmt.Println("  - ", os.Args[0], "-endpoint=unix:///var/run/uqda.sock getPeers")
 	}
 

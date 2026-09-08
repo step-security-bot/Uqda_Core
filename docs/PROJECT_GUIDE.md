@@ -480,6 +480,10 @@ publisher-identity verification, use the Sigstore procedure later in this guide.
 
 ### Windows
 
+For the new Windows MSI family, legacy migration, coexistence and diagnostic
+details, read [Windows installation and trust](windows-installation.md).
+These source changes are not present in already downloaded v0.1.9 installers.
+
 Download the MSI matching the machine (`x64`, `x86`, or `arm64`) from the
 latest release and run it as an administrator. The package installs `uqda.exe`,
 `uqdactl.exe`, and Wintun, creates a per-machine `UQDA` service running as
@@ -490,7 +494,7 @@ latest release and run it as an administrator. The package installs `uqda.exe`,
 ```
 
 The service log is written under the same directory. The default Windows admin
-endpoint is `tcp://localhost:9001`; keep it bound to localhost.
+endpoint is `tcp://localhost:19001`; keep it bound to localhost.
 
 The MSI adds its installation directory to the machine `PATH`. Close and open
 PowerShell after installation so the new process receives the updated
@@ -644,7 +648,7 @@ fields; it intentionally omits the private key:
 | macOS | `/etc/uqda.conf` | `unix:///var/run/uqda.sock` | `auto`, MTU up to 65535 |
 | FreeBSD | `/usr/local/etc/uqda.conf` | `unix:///var/run/uqda.sock` | `/dev/tun0`, max MTU 32767 |
 | OpenBSD | `/etc/uqda.conf` | `unix:///var/run/uqda.sock` | `tun0`, max MTU 16384 |
-| Windows | `%ProgramData%\UQDA\uqda.conf` | `tcp://localhost:9001` | `UQDA` |
+| Windows | `%ProgramData%\UQDA\uqda.conf` | `tcp://localhost:19001` | `UQDA` |
 
 Packaged builds may override generic defaults at link time. The service/package
 configuration is authoritative for an installed system.
@@ -750,7 +754,7 @@ Use a non-default endpoint by putting options before the command:
 
 ```bash
 sudo uqdactl -endpoint=unix:///var/run/uqda.sock getPeers
-uqdactl.exe -endpoint=tcp://localhost:9001 getSelf
+uqdactl.exe -endpoint=tcp://localhost:19001 getSelf
 ```
 
 Add or remove a runtime peer:

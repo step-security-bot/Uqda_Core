@@ -204,7 +204,7 @@ Listen: [
 الواردة المباشرة فقط؛ ليس جدار حماية ولا يحدد من يستطيع الوصول إلى خدمة IPv6.
 
 واجهة الإدارة عبر TCP لا تملك مصادقة بروتوكولية. الإعداد الافتراضي على Windows
-هو `tcp://localhost:9001` ويجب ألا يتحول إلى عنوان عام. على الأنظمة الشبيهة
+هو `tcp://localhost:19001` ويجب ألا يتحول إلى عنوان عام. على الأنظمة الشبيهة
 بيونكس، الإعداد الافتراضي Unix socket محلي بصلاحية `0600`.
 
 ## الإعداد الدائم
@@ -316,6 +316,10 @@ tail -n 100 /tmp/uqda.stdout.log /tmp/uqda.stderr.log
 
 ### Windows
 
+تنبيه للإصدار القادم: تغييرات فصل MSI وWintun ومنفذ الإدارة 19001 هنا تخص
+البناء الجديد؛ لا تغيّر حزمة v0.1.9 التي سبق تنزيلها. تثبيت UQDA القديم يحتاج
+انتقالًا مع حفظ الهوية؛ راجع [إرشادات Windows والانتقال](windows-installation.md).
+
 نزّل MSI المطابق لـ`x64` أو`x86` أو`ARM64` وشغّله كمسؤول. يغلق المستخدم
 PowerShell ويفتح نافذة جديدة **Run as Administrator** بعد التثبيت لكي يصل PATH
 المحدّث إلى العملية.
@@ -324,7 +328,7 @@ PowerShell ويفتح نافذة جديدة **Run as Administrator** بعد ال
 | --- | --- |
 | الإعداد | `%ProgramData%\UQDA\uqda.conf` |
 | السجل | `%ProgramData%\UQDA\uqda.log` |
-| الإدارة | `tcp://localhost:9001` |
+| الإدارة | `tcp://localhost:19001` |
 | TUN | واجهة `UQDA` عبر Wintun، MTU حتى 65535 |
 | الخدمة | Windows Service باسم `UQDA` وتعمل كـLocalSystem |
 
@@ -340,7 +344,7 @@ uqdactl.exe doctor
 
 ```powershell
 uqdactl.exe -json getSelf
-uqdactl.exe -endpoint=tcp://localhost:9001 getPeers
+uqdactl.exe -endpoint=tcp://localhost:19001 getPeers
 ```
 
 تحقق من الإعداد ثم أعد تشغيل الخدمة:

@@ -103,6 +103,9 @@ sudo sh updater.sh
 
 ### Windows
 
+See [Windows installation, migration and trust](docs/windows-installation.md)
+before migrating an existing installation to the new MSI family.
+
 Download the matching `.msi` asset from the latest release and run it as an
 administrator. The installer creates and starts the `UQDA` Windows service.
 New packages add the installation directory to the system `PATH`; open a new

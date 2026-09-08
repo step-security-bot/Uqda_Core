@@ -26,6 +26,8 @@ jobs:
         run: test -z "$(gofmt -l .)"
       - name: Documentation consistency
         run: python3 tests/documentation_test.py
+      - name: Windows installer isolation invariants
+        run: python3 tests/windows_isolation_test.py
       - name: Uninstaller tests
         run: |
           sh -n uninstall.sh tests/uninstall_test.sh

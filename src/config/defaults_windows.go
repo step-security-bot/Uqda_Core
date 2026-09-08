@@ -19,7 +19,7 @@ func windowsConfigFile() string {
 func getDefaults() platformDefaultParameters {
 	return platformDefaultParameters{
 		// Admin
-		DefaultAdminListen: "tcp://localhost:9001",
+		DefaultAdminListen: "tcp://localhost:19001",
 
 		// Configuration (used for uqdactl)
 		DefaultConfigFile: windowsConfigFile(),

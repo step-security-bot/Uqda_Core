@@ -36,7 +36,7 @@ PLATFORM_FACTS = {
         "65535",
     ),
     "src/config/defaults_windows.go": (
-        "tcp://localhost:9001",
+        "tcp://localhost:19001",
         "65535",
     ),
     "src/config/defaults_freebsd.go": (

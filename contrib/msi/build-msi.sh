@@ -8,23 +8,26 @@
 # Author: Neil Alexander <neilalexander@users.noreply.github.com>
 
 # Get arch from command line if given
-PKGARCH=$1
-if [ "${PKGARCH}" == "" ];
-then
-  echo "tell me the architecture: x86, x64 or arm64"
-  exit 1
-fi
+set -eu
+PKGARCH=${1:-}
+case "$PKGARCH" in
+  x64|x86|arm64) ;;
+  *) echo "tell me the architecture: x86, x64 or arm64" >&2; exit 1 ;;
+esac
 
-# Download the wix tools!
-dotnet tool install --global wix --version 5.0.0
+# This authoring uses WiX 3. Installing WiX 5 does not provide candle/light.
+command -v candle >/dev/null || { echo "WiX 3 candle is required" >&2; exit 1; }
+command -v light >/dev/null || { echo "WiX 3 light is required" >&2; exit 1; }
 
 # Build UQDA unless the release workflow supplied already-built, Authenticode-
 # signed binaries. Rebuilding here would silently strip those signatures from
 # the files embedded in the MSI.
 if [ "${UQDA_USE_PREBUILT:-0}" != "1" ]; then
-  [ "${PKGARCH}" == "x64" ] && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 ./build
-  [ "${PKGARCH}" == "x86" ] && GOOS=windows GOARCH=386 CGO_ENABLED=0 ./build
-  [ "${PKGARCH}" == "arm64" ] && GOOS=windows GOARCH=arm64 CGO_ENABLED=0 ./build
+  case "$PKGARCH" in
+    x64) GOOS=windows GOARCH=amd64 CGO_ENABLED=0 ./build ;;
+    x86) GOOS=windows GOARCH=386 CGO_ENABLED=0 ./build ;;
+    arm64) GOOS=windows GOARCH=arm64 CGO_ENABLED=0 ./build ;;
+  esac
 fi
 
 if [ ! -s uqda.exe ] || [ ! -s uqdactl.exe ]; then
@@ -32,30 +35,21 @@ if [ ! -s uqda.exe ] || [ ! -s uqdactl.exe ]; then
   exit 1
 fi
 
-# Create the postinstall script
-cat > updateconfig.bat << EOF
-@echo off
-setlocal
-set "UQDA_CONFIG_DIR=%ProgramData%\\UQDA"
-if not exist "%UQDA_CONFIG_DIR%" (
-  mkdir "%UQDA_CONFIG_DIR%" || exit /b 1
-)
-if not exist "%UQDA_CONFIG_DIR%\\uqda.conf" (
-  if exist "%~dp0uqda.exe" (
-    "%~dp0uqda.exe" -genconf > "%UQDA_CONFIG_DIR%\\uqda.conf" || exit /b 1
-  )
-)
-exit /b 0
-EOF
+# Keep this script reviewable and testable independently of XML generation.
+cp contrib/msi/updateconfig.bat updateconfig.bat
 
 # Work out metadata for the package info
 PKGNAME=$(sh contrib/semver/name.sh)
 PKGVERSION=$(sh contrib/msi/msversion.sh --bare)
 PKGSEMVER=$(sh contrib/semver/version.sh --bare)
 PKGVERSIONMS=$(echo $PKGVERSION | tr - .)
-([ "${PKGARCH}" == "x64" ] || [ "${PKGARCH}" == "arm64" ]) && \
-  PKGGUID="77757838-1a23-40a5-a720-c3b43e0260cc" PKGINSTFOLDER="ProgramFiles64Folder" || \
-  PKGGUID="54a3294e-a441-4322-aefb-3bb40dd022bb" PKGINSTFOLDER="ProgramFilesFolder"
+# One UQDA-only product family, including architecture transitions. Never put
+# upstream UpgradeCodes in our Upgrade table: that can remove another product.
+PKGGUID="c68fc7f4-9642-47e6-a8d5-a75e339d4318"
+case "$PKGARCH" in
+  x64|arm64) PKGINSTFOLDER="ProgramFiles64Folder" ;;
+  x86) PKGINSTFOLDER="ProgramFilesFolder" ;;
+esac
 
 # Download the Wintun driver
 if [ ! -d wintun ];
@@ -111,7 +105,16 @@ cat > wix.xml << EOF
       SummaryCodepage="1252" />
 
     <MajorUpgrade
-      AllowDowngrades="yes" />
+      DowngradeErrorMessage="A newer UQDA version is already installed."
+      Schedule="afterInstallInitialize" />
+
+    <Property Id="UQDA_EXISTING_SERVICE">
+      <RegistrySearch Id="ExistingUqdaService" Root="HKLM"
+        Key="SYSTEM\CurrentControlSet\Services\UQDA" Name="ImagePath" Type="raw" />
+    </Property>
+    <Condition Message="An older or manually installed UQDA service exists. Back up ProgramData\UQDA, uninstall only UQDA using Installed apps, then install this package. Do not remove Yggdrasil or delete your configuration. See docs/windows-installation.md.">
+      Installed OR NOT UQDA_EXISTING_SERVICE OR WIX_UPGRADE_DETECTED
+    </Condition>
 
     <Media
       Id="1"
@@ -123,19 +126,13 @@ cat > wix.xml << EOF
       <Directory Id="${PKGINSTFOLDER}" Name="PFiles">
         <Directory Id="UQDAInstallFolder" Name="UQDA">
 
-          <Component Id="MainExecutable" Guid="c2119231-2aa3-4962-867a-9759c87beb24">
+          <Component Id="MainExecutable" Guid="*">
             <File
               Id="UQDA"
               Name="uqda.exe"
               DiskId="1"
               Source="uqda.exe"
               KeyPath="yes" />
-
-            <File
-              Id="Wintun"
-              Name="wintun.dll"
-              DiskId="1"
-              Source="${PKGWINTUNDLL}" />
 
             <Environment
               Id="UQDAPath"
@@ -161,13 +158,22 @@ cat > wix.xml << EOF
 
             <ServiceControl
               Id="ServiceControl"
-              Name="uqda"
+              Name="UQDA"
               Start="install"
               Stop="both"
               Remove="uninstall" />
           </Component>
 
-          <Component Id="CtrlExecutable" Guid="a916b730-974d-42a1-b687-d9d504cbb86a">
+          <Component Id="WintunLibrary" Guid="*">
+            <File
+              Id="Wintun"
+              Name="wintun.dll"
+              DiskId="1"
+              Source="${PKGWINTUNDLL}"
+              KeyPath="yes" />
+          </Component>
+
+          <Component Id="CtrlExecutable" Guid="*">
             <File
               Id="UQDActl"
               Name="uqdactl.exe"
@@ -176,7 +182,7 @@ cat > wix.xml << EOF
               KeyPath="yes"/>
           </Component>
 
-          <Component Id="ConfigScript" Guid="64a3733b-c98a-4732-85f3-20cd7da1a785">
+          <Component Id="ConfigScript" Guid="*">
             <File
               Id="Configbat"
               Name="updateconfig.bat"
@@ -190,6 +196,7 @@ cat > wix.xml << EOF
 
     <Feature Id="UQDAFeature" Title="UQDA" Level="1">
       <ComponentRef Id="MainExecutable" />
+      <ComponentRef Id="WintunLibrary" />
       <ComponentRef Id="CtrlExecutable" />
       <ComponentRef Id="ConfigScript" />
     </Feature>
@@ -197,16 +204,16 @@ cat > wix.xml << EOF
     <CustomAction
       Id="UpdateGenerateConfig"
       Directory="UQDAInstallFolder"
-      ExeCommand="cmd.exe /c updateconfig.bat"
+      ExeCommand='&quot;[SystemFolder]cmd.exe&quot; /d /c &quot;&quot;[UQDAInstallFolder]updateconfig.bat&quot; &quot;[CommonAppDataFolder]UQDA&quot;&quot;'
       Execute="deferred"
       Return="check"
-      Impersonate="yes" />
+      Impersonate="no" />
 
     <InstallExecuteSequence>
       <Custom
         Action="UpdateGenerateConfig"
         Before="StartServices">
-          NOT Installed AND NOT REMOVE
+          NOT REMOVE~="ALL"
       </Custom>
     </InstallExecuteSequence>
 
