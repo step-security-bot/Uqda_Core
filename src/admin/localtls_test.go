@@ -44,9 +44,12 @@ func TestLocalTLSRequiresMatchingNodeIdentity(t *testing.T) {
 				_ = left.Close()
 				result <- err
 			}()
-			_ = client.Handshake()
+			clientErr := client.Handshake()
 			if ok := <-result == nil; ok != tc.wantOK {
 				t.Fatalf("server authentication success=%v, want %v", ok, tc.wantOK)
+			}
+			if tc.wantOK && clientErr != nil {
+				t.Fatalf("matching client rejected the server: %v", clientErr)
 			}
 		})
 	}
@@ -66,6 +69,30 @@ func TestLocalTLSPinsServerIdentity(t *testing.T) {
 		PeerCertificates: []*x509.Certificate{leaf},
 	}); err == nil {
 		t.Fatal("different server identity accepted")
+	}
+}
+
+func TestLocalTLSRejectsDifferentServerHandshake(t *testing.T) {
+	local := config.GenerateConfig()
+	other := config.GenerateConfig()
+	left, right := net.Pipe()
+	defer left.Close()
+	defer right.Close()
+	_ = left.SetDeadline(time.Now().Add(2 * time.Second))
+	_ = right.SetDeadline(time.Now().Add(2 * time.Second))
+	server := tls.Server(left, PinnedTLSConfig(other.Certificate))
+	client := tls.Client(right, PinnedTLSConfig(local.Certificate))
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = server.Handshake()
+		_ = left.Close()
+	}()
+	err := client.Handshake()
+	_ = right.Close()
+	<-done
+	if err == nil {
+		t.Fatal("TLS handshake accepted a different server identity")
 	}
 }
 

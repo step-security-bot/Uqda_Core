@@ -57,6 +57,7 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Build and test candidate source
+        shell: bash
         run: |
           go vet ./...
           go test -race -timeout=10m ./...
