@@ -126,6 +126,8 @@ jobs:
           - { name: loss-latency, script: loss-latency.sh }
           - { name: secure-required, script: secure-required.sh }
           - { name: upstream-compatibility, script: upstream-compatibility.sh }
+          - { name: upstream-tls, script: upstream-compatibility.sh, transport: tls }
+          - { name: upstream-quic, script: upstream-compatibility.sh, transport: quic }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -134,14 +136,14 @@ jobs:
       - name: Build UQDA
         run: ./build
       - name: Fetch pinned upstream interoperability fixture
-        if: matrix.name == 'upstream-compatibility'
+        if: matrix.script == 'upstream-compatibility.sh'
         uses: actions/checkout@v7
         with:
           repository: yggdrasil-network/yggdrasil-go
           ref: 422836eeb21a99790caa286aa63d493bbc4766d7 # v0.5.14
           path: .upstream
       - name: Build upstream interoperability fixture
-        if: matrix.name == 'upstream-compatibility'
+        if: matrix.script == 'upstream-compatibility.sh'
         working-directory: .upstream
         run: go build -o /tmp/uqda-upstream-fixture ./cmd/yggdrasil
       - name: Check namespace test prerequisites
@@ -154,7 +156,7 @@ jobs:
       - name: Build legacy protocol fixture
         run: go build -o /tmp/uqda-e2e-legacy-peer ./tests/e2e/legacy_peer.go
       - name: Run ${{ matrix.name }} E2E scenario
-        run: sudo env UQDA_LEGACY_PEER_BIN=/tmp/uqda-e2e-legacy-peer UPSTREAM_BIN=/tmp/uqda-upstream-fixture bash "tests/e2e/${{ matrix.script }}"
+        run: sudo env UQDA_LEGACY_PEER_BIN=/tmp/uqda-e2e-legacy-peer UPSTREAM_BIN=/tmp/uqda-upstream-fixture UPSTREAM_TRANSPORT='${{ matrix.transport || 'tcp' }}' bash "tests/e2e/${{ matrix.script }}"
 
   build-linux:
     strategy:
