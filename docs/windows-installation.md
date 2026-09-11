@@ -1,5 +1,26 @@
 # Windows installation, coexistence and trust
 
+## Development changes (not yet a stable release)
+
+Configuration normalization preserves explicit `AdminListen`, including `none`.
+Existing persistent configurations without a usable identity are rejected; they
+must not acquire a new random identity on restart. TCP administration now uses
+mutual TLS with the local node identity: update `uqda.exe` and `uqdactl.exe`
+together. Keep private keys local and protected; no Yggdrasil peering changes
+are required. See [administration authentication](admin-api.md).
+
+New MSI authoring reserves 100 build numbers per SemVer patch: beta.1..49 map
+to 1..49, rc.1..49 to 50..98 and stable to 99. For example, 0.1.11-beta.1,
+0.1.11-rc.1 and 0.1.11 map to 0.1.1101, 0.1.1150 and 0.1.1199.
+Major/minor are limited to 255 and the SemVer patch to 654. Binary and filename
+versions retain SemVer. Never reissue a published stable tag with this scheme.
+
+Historical MSI migration remains a release blocker: the legacy service guard
+must not be removed without proving ownership, configuration retention,
+rollback and non-interference with Yggdrasil using historical installer fixtures.
+The tests below do not constitute that acceptance. Do not delete a user's
+configuration as an upgrade strategy.
+
 ## Release boundary
 
 The installer isolation changes start with v0.1.10. They do not repair already

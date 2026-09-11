@@ -106,7 +106,9 @@ func (a *AdminSocket) doctorHandler(_ *DoctorRequest, res *DoctorResponse) error
 }
 
 func (a *AdminSocket) callDoctorDependency(name string, out interface{}) (bool, error) {
+	a.handlerMu.RLock()
 	h, ok := a.handlers[name]
+	a.handlerMu.RUnlock()
 	if !ok {
 		return false, nil
 	}

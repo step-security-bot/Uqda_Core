@@ -6,6 +6,9 @@ on:
       tag:
         description: Stable SemVer tag (leave blank to use the newest release-notes file)
         required: false
+      tested_prerelease:
+        description: Prerelease tag validated on this exact commit (required for publication)
+        required: true
   push:
     branches: [main]
     paths:
@@ -381,7 +384,8 @@ jobs:
           UQDA_USE_PREBUILT: "1"
         run: |
           sh contrib/msi/build-msi.sh "${{ matrix.arch }}"
-          test "$(sh contrib/msi/msversion.sh)" = "${UQDA_VERSION#v}"
+          sh tests/msversion_test.sh
+          sh contrib/msi/msversion.sh
           test -s "uqda-${UQDA_VERSION#v}-${{ matrix.arch }}.msi"
       - name: Upload unsigned installer for SignPath
         if: env.SIGNPATH_ENABLED == 'true'
@@ -496,7 +500,7 @@ jobs:
 
   publish:
     name: Publish signed stable release
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     needs: [quality-gate, portable, debian, router, macos, windows, vendored-source, release-tools]
     runs-on: ubuntu-latest
     permissions:
@@ -507,6 +511,12 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v7
+      - name: Require tested prerelease and full CI on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TESTED_PRERELEASE: ${{ inputs.tested_prerelease }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: python3 tests/release_gate.py
       - name: Resolve release version
         shell: bash
         run: echo "UQDA_VERSION=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")" >> "$GITHUB_ENV"

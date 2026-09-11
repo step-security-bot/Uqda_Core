@@ -1,0 +1,7 @@
+{
+  "historical_windows_migration": {"passed": false, "evidence": ""},
+  "windows_upgrade_rollback": {"passed": false, "evidence": ""},
+  "native_windows_x86_arm64": {"passed": false, "evidence": ""},
+  "native_bsd_and_supported_router_targets": {"passed": false, "evidence": ""},
+  "local_administration_security_review": {"passed": false, "evidence": ""}
+}

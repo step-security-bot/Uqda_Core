@@ -1,5 +1,20 @@
 # Administration CLI and JSON API
 
+## Development hardening: authenticated local administration
+
+In the development branch, TCP administration (including existing `tcp://`
+endpoints) negotiates mutual TLS 1.3. Both endpoints pin this node's public key;
+the client loads the local protected configuration to prove possession of its
+private key. Update daemon and client together. Use `uqdactl -useconffile PATH`
+for a non-default local configuration. Never copy the node private key to a
+remote administrator. Unix sockets retain OS permissions. Mesh peering,
+protocol 0.5, public peer keys and overlay addresses are unchanged.
+
+Administration sessions are limited to 64 concurrent connections, 1 MiB total
+JSON input per connection and 30 seconds per request. A CLI elevation check is
+not the server's authentication boundary. The historical unauthenticated TCP
+description below applies to v0.1.10 and earlier, not this development branch.
+
 [Documentation index](README.md) · [الإدارة بالعربية](NETWORK_GUIDE_AR.md#إدارة-العقدة)
 
 `uqda` is the daemon; `uqdactl` queries the running daemon. Running `uqda`

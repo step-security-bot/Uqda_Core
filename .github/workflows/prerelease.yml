@@ -1,0 +1,118 @@
+name: Tested prerelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New beta or rc tag (never an existing stable tag)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uqda-prerelease
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require a new prerelease and current CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_VERSION: ${{ inputs.version }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os, re, sys
+          sys.path.insert(0, 'tests')
+          from release_gate import api, successful_run
+          version = os.environ['CANDIDATE_VERSION']
+          if not re.fullmatch(r'v\d+\.\d+\.\d+-(beta|rc)\.[1-9]\d*', version):
+              raise SystemExit('An explicit beta or rc version is required')
+          repo, sha = os.environ['GITHUB_REPOSITORY'], os.environ['EXPECTED_SHA']
+          for workflow in ('ci.yml', 'windows-installer.yml'):
+              runs = api(f'repos/{repo}/actions/workflows/{workflow}/runs?head_sha={sha}&per_page=100')['workflow_runs']
+              if not successful_run(runs, sha, repo):
+                  raise SystemExit(f'Missing successful validation: {workflow}')
+          PY
+
+  candidate:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, name: linux-amd64 }
+          - { os: macos-latest, name: macos-native }
+          - { os: windows-latest, name: windows-x64 }
+    runs-on: ${{ matrix.os }}
+    env:
+      UQDA_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Build and test candidate source
+        run: |
+          go vet ./...
+          go test -race -timeout=10m ./...
+      - name: Build Unix candidate
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          ./build
+          tar -czf candidate-${{ matrix.name }}.tar.gz uqda uqdactl README.md LICENSE
+      - name: Build Windows candidate
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $bin = Join-Path $env:WIX 'bin'
+          if (-not (Test-Path "$bin\candle.exe")) { throw 'WiX 3 is required' }
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Package Windows candidate
+        if: runner.os == 'Windows'
+        shell: bash
+        run: sh contrib/msi/build-msi.sh x64
+      - name: Exercise Windows candidate
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $msi = Get-ChildItem uqda-*-x64.msi | Select-Object -ExpandProperty FullName
+          ./contrib/msi/test-installed-msi.ps1 -MsiPath $msi -ExpectedVersion $env:UQDA_VERSION.TrimStart('v')
+      - uses: actions/upload-artifact@v7
+        with:
+          name: candidate-${{ matrix.name }}
+          path: |
+            candidate-*.tar.gz
+            uqda-*.msi
+          if-no-files-found: error
+
+  publish:
+    needs: [validate, candidate]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: candidate-*
+          path: candidate-assets
+          merge-multiple: true
+      - name: Publish explicitly experimental artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          REPOSITORY: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          cd candidate-assets
+          sha256sum ./* > SHA256SUMS
+          gh release create "$VERSION" ./* --repo "$REPOSITORY" --target "$SOURCE_SHA" \
+            --prerelease --title "UQDA experimental $VERSION" \
+            --notes 'Experimental candidate only. Windows x64 MSI smoke tests and native Linux/macOS tests ran. Other architectures, native BSD and historical MSI migration still require acceptance. Windows artifacts are unsigned. Checksums are integrity checks, not publisher signatures. Do not treat this candidate as production-ready.'

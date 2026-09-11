@@ -230,16 +230,7 @@ func main() {
 		return
 
 	case *normaliseconf:
-		cfg.AdminListen = ""
-		if cfg.PrivateKeyPath != "" {
-			cfg.PrivateKey = nil
-		}
-		var bs []byte
-		if *confjson {
-			bs, err = json.MarshalIndent(cfg, "", "  ")
-		} else {
-			bs, err = hjson.Marshal(cfg)
-		}
+		bs, err := normaliseConfig(cfg, *confjson)
 		if err != nil {
 			panic(err)
 		}
@@ -304,6 +295,7 @@ func main() {
 	{
 		options := []admin.SetupOption{
 			admin.ListenAddress(cfg.AdminListen),
+			admin.LocalCertificate{Certificate: cfg.Certificate},
 		}
 		if cfg.LogLookups {
 			options = append(options, admin.LogLookups{})
@@ -396,6 +388,19 @@ func main() {
 	_ = n.multicast.Stop()
 	_ = n.tun.Stop()
 	n.core.Stop()
+}
+
+// Preserve explicit settings, including AdminListen=none, without mutating the
+// caller or exporting a private key loaded from an external key file.
+func normaliseConfig(cfg *config.NodeConfig, asJSON bool) ([]byte, error) {
+	copyConfig := *cfg
+	if copyConfig.PrivateKeyPath != "" {
+		copyConfig.PrivateKey = nil
+	}
+	if asJSON {
+		return json.MarshalIndent(&copyConfig, "", "  ")
+	}
+	return hjson.Marshal(&copyConfig)
 }
 
 func setLogLevel(loglevel string, logger *log.Logger) {

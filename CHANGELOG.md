@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+- Preserve explicit administration settings during configuration normalization.
+- Authenticate TCP administration with mutually pinned TLS; update local daemon
+  and CLI together. Mesh protocol 0.5 and Yggdrasil peer compatibility are unchanged.
+- Reject missing/malformed persistent identities rather than silently replacing
+  the node key; bound administration sessions and synchronize handler registration.
+- Give beta, rc and stable MSI packages ordered distinct numeric versions.
+- Add native race/nested-module checks and pinned upstream interoperability E2E.
+- Require explicit, exact-commit prerelease evidence and completed acceptance
+  checks before manual stable publication. Historical migration remains pending.
+
 ## v0.1.10
 
 - Isolated UQDA's MSI family, file components, Wintun adapter identity and

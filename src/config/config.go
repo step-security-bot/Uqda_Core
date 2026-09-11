@@ -113,6 +113,18 @@ func (cfg *NodeConfig) ReadFrom(r io.Reader) (int64, error) {
 	// then parse the configuration we loaded above on top of it. The effect
 	// of this is that any configuration item that is missing from the provided
 	// configuration will use a sane default.
+	// Persistent configurations must name an identity. Silently generating a
+	// replacement key here would change the node address on every restart.
+	var identity struct {
+		PrivateKey KeyBytes
+		PrivateKeyPath string
+	}
+	if err := hjson.Unmarshal(conf, &identity); err != nil {
+		return n, err
+	}
+	if len(identity.PrivateKey) == 0 && identity.PrivateKeyPath == "" {
+		return n, fmt.Errorf("configuration must contain PrivateKey or PrivateKeyPath; restore your identity backup")
+	}
 	*cfg = *GenerateConfig()
 	if err := cfg.UnmarshalHJSON(conf); err != nil {
 		return n, err
@@ -137,6 +149,9 @@ func (cfg *NodeConfig) postprocessConfig() error {
 		if err := cfg.UnmarshalPEMPrivateKey(f); err != nil {
 			return err
 		}
+	}
+	if len(cfg.PrivateKey) != ed25519.PrivateKeySize {
+		return fmt.Errorf("private key must contain exactly %d bytes", ed25519.PrivateKeySize)
 	}
 	switch {
 	case cfg.Certificate == nil:

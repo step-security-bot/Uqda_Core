@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -16,6 +17,7 @@ import (
 	"suah.dev/protect"
 
 	"github.com/Uqda/Core/src/admin"
+	"github.com/Uqda/Core/src/config"
 	"github.com/Uqda/Core/src/core"
 	"github.com/Uqda/Core/src/multicast"
 	"github.com/Uqda/Core/src/tun"
@@ -35,17 +37,16 @@ func main() {
 	os.Exit(run())
 }
 
-func run() int {
+func run() (exitCode int) {
 	logbuffer := &bytes.Buffer{}
 	logger := log.New(logbuffer, "", log.Flags())
 
-	defer func() int {
+	defer func() {
 		if r := recover(); r != nil {
 			logger.Println("Fatal error:", r)
 			fmt.Print(logbuffer)
-			return 1
+			exitCode = 1
 		}
-		return 0
 	}()
 
 	cmdLineEnv := newCmdLineEnv()
@@ -81,21 +82,51 @@ func run() int {
 		case "unix":
 			logger.Println("Connecting to UNIX socket", cmdLineEnv.endpoint[7:])
 			conn, err = net.Dial("unix", cmdLineEnv.endpoint[7:])
-		case "tcp":
+		case "tcp", "tls":
 			logger.Println("Connecting to TCP socket", u.Host)
-			conn, err = net.Dial("tcp", u.Host)
+			conn, err = net.DialTimeout("tcp", u.Host, 10*time.Second)
 		default:
 			logger.Println("Unknown protocol or malformed address - check your endpoint")
 			err = errors.New("protocol not supported")
 		}
 	} else {
-		logger.Println("Connecting to TCP socket", u.Host)
-		conn, err = net.Dial("tcp", cmdLineEnv.endpoint)
+		logger.Println("Connecting to TCP socket", cmdLineEnv.endpoint)
+		conn, err = net.DialTimeout("tcp", cmdLineEnv.endpoint, 10*time.Second)
 	}
 	if err != nil {
 		fmt.Fprint(os.Stderr, logbuffer.String())
 		fmt.Fprintln(os.Stderr, "uqdactl: could not connect to the administration endpoint; verify that UQDA is running:", err)
 		return 1
+	}
+	defer conn.Close()
+	if err := conn.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
+		fmt.Fprintln(os.Stderr, "uqdactl:", err)
+		return 1
+	}
+	if conn.RemoteAddr().Network() == "tcp" {
+		f, err := os.Open(cmdLineEnv.configFile)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "uqdactl: cannot read local node authentication configuration:", err)
+			return 1
+		}
+		var cfg config.NodeConfig
+		_, readErr := cfg.ReadFrom(f)
+		_ = f.Close()
+		if readErr != nil {
+			fmt.Fprintln(os.Stderr, "uqdactl: invalid authentication configuration:", readErr)
+			return 1
+		}
+		tlsConfig := admin.PinnedTLSConfig(cfg.Certificate)
+		if tlsConfig == nil {
+			fmt.Fprintln(os.Stderr, "uqdactl: invalid local node certificate")
+			return 1
+		}
+		secured := tls.Client(conn, tlsConfig)
+		if err := secured.Handshake(); err != nil {
+			fmt.Fprintln(os.Stderr, "uqdactl: administration authentication failed; update daemon and client together:", err)
+			return 1
+		}
+		conn = secured
 	}
 
 	// Configuration and socket setup are complete; retain only the promises

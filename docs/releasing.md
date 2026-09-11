@@ -1,5 +1,20 @@
 # Publishing a stable release
 
+## Development release lock
+
+Stable publication is manual-only and requires a published beta/rc from the
+exact same commit plus successful current CI, Windows installer and tested
+prerelease workflows. Code changes after the candidate require another candidate.
+The acceptance checklist in `.github/release-acceptance.json` must also be
+complete, including evidence for historical migration and native platforms.
+Pending evidence deliberately blocks publication. Do not mark a native test
+complete merely because a cross-build passed. Signing gates remain unchanged.
+
+After merging reviewed changes, run **Tested prerelease** with a new beta/rc tag.
+Its notes declare the limited tested platform scope and unsigned artifacts.
+Complete all acceptance evidence before manually running **Stable Release** with
+`tested_prerelease`. Adding release notes alone no longer publishes a stable.
+
 The release version is selected by a versioned release-notes file. Package metadata and documentation must be updated in the same pull request.
 No Apple Developer account is required for an explicitly unsigned macOS release.
 

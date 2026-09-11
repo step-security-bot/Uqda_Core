@@ -14,6 +14,8 @@ import (
 )
 
 type CmdLineEnv struct {
+	configFile string
+	endpointExplicit bool
 	args                 []string
 	endpoint, server     string
 	color                string
@@ -23,6 +25,7 @@ type CmdLineEnv struct {
 func newCmdLineEnv() CmdLineEnv {
 	var cmdLineEnv CmdLineEnv
 	cmdLineEnv.endpoint = config.GetDefaults().DefaultAdminListen
+	cmdLineEnv.configFile = config.GetDefaults().DefaultConfigFile
 	return cmdLineEnv
 }
 
@@ -44,12 +47,19 @@ func (cmdLineEnv *CmdLineEnv) parseFlagsAndArgs() {
 	}
 
 	server := flag.String("endpoint", cmdLineEnv.endpoint, "Admin socket endpoint")
+	configFile := flag.String("useconffile", cmdLineEnv.configFile, "Local node configuration for TCP administration authentication")
 	injson := flag.Bool("json", false, "Output in JSON format (as opposed to pretty-print)")
 	borders := flag.Bool("borders", true, "Output borders on tables")
 	color := flag.String("color", "auto", "Color output: auto, always, or never")
 	ver := flag.Bool("version", false, "Prints the version of this build")
 
 	flag.Parse()
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "endpoint" {
+			cmdLineEnv.endpointExplicit = true
+		}
+	})
+	cmdLineEnv.configFile = *configFile
 
 	cmdLineEnv.args = flag.Args()
 	cmdLineEnv.server = *server
@@ -60,10 +70,10 @@ func (cmdLineEnv *CmdLineEnv) parseFlagsAndArgs() {
 }
 
 func (cmdLineEnv *CmdLineEnv) setEndpoint(logger *log.Logger) {
-	if cmdLineEnv.server == cmdLineEnv.endpoint {
-		if cfg, err := os.ReadFile(config.GetDefaults().DefaultConfigFile); err == nil {
-			if bytes.Equal(cfg[0:2], []byte{0xFF, 0xFE}) ||
-				bytes.Equal(cfg[0:2], []byte{0xFE, 0xFF}) {
+	if !cmdLineEnv.endpointExplicit {
+		if cfg, err := os.ReadFile(cmdLineEnv.configFile); err == nil {
+			if len(cfg) >= 2 && (bytes.Equal(cfg[0:2], []byte{0xFF, 0xFE}) ||
+				bytes.Equal(cfg[0:2], []byte{0xFE, 0xFF})) {
 				utf := unicode.UTF16(unicode.BigEndian, unicode.UseBOM)
 				decoder := utf.NewDecoder()
 				cfg, err = decoder.Bytes(cfg)

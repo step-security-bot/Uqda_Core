@@ -2,6 +2,7 @@ package admin
 
 import (
 	"crypto/ed25519"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"net"
@@ -19,6 +20,8 @@ func (c *AdminSocket) _applyOption(opt SetupOption) {
 		c.config.listenaddr = v
 	case LogLookups:
 		c.logLookups()
+	case LocalCertificate:
+		c.config.tlsConfig = PinnedTLSConfig(v.Certificate)
 	}
 }
 
@@ -31,6 +34,13 @@ type ListenAddress string
 func (a ListenAddress) isSetupOption() {}
 
 type LogLookups struct{}
+
+// LocalCertificate authenticates TCP administration independently of mesh peers.
+type LocalCertificate struct {
+	Certificate *tls.Certificate
+}
+
+func (l LocalCertificate) isSetupOption() {}
 
 func (l LogLookups) isSetupOption() {}
 

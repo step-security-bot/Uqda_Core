@@ -1,13 +1,16 @@
 package admin
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"os"
 	"sort"
+	"sync"
 
 	"strings"
 	"time"
@@ -15,16 +18,17 @@ import (
 	"github.com/Uqda/Core/src/core"
 )
 
-// TODO: Add authentication
-
 type AdminSocket struct {
 	core     *core.Core
 	log      core.Logger
 	listener net.Listener
 	handlers map[string]handler
+	handlerMu sync.RWMutex
+	connections chan struct{}
 	done     chan struct{}
 	config   struct {
 		listenaddr ListenAddress
+		tlsConfig *tls.Config
 	}
 }
 
@@ -59,6 +63,8 @@ type ListEntry struct {
 
 // AddHandler is called for each admin function to add the handler and help documentation to the API.
 func (a *AdminSocket) AddHandler(name, desc string, args []string, handlerfunc core.AddHandlerFunc) error {
+	a.handlerMu.Lock()
+	defer a.handlerMu.Unlock()
 	if _, ok := a.handlers[strings.ToLower(name)]; ok {
 		return errors.New("handler already exists")
 	}
@@ -76,6 +82,7 @@ func New(c *core.Core, log core.Logger, opts ...SetupOption) (*AdminSocket, erro
 		core:     c,
 		log:      log,
 		handlers: make(map[string]handler),
+		connections: make(chan struct{}, 64),
 	}
 	for _, opt := range opts {
 		a._applyOption(opt)
@@ -121,7 +128,7 @@ func New(c *core.Core, log core.Logger, opts ...SetupOption) (*AdminSocket, erro
 					}
 				}
 			}
-		case "tcp":
+		case "tcp", "tls":
 			a.listener, err = net.Listen("tcp", u.Host)
 		default:
 			a.listener, err = net.Listen("tcp", listenaddr)
@@ -133,11 +140,22 @@ func New(c *core.Core, log core.Logger, opts ...SetupOption) (*AdminSocket, erro
 		a.log.Errorf("Admin socket failed to listen: %v", err)
 		os.Exit(1)
 	}
+	// TCP is authenticated on every platform. The transport label tcp:// is
+	// retained for existing configurations; updated clients negotiate TLS.
+	if a.listener.Addr().Network() == "tcp" {
+		if a.config.tlsConfig == nil {
+			_ = a.listener.Close()
+			return nil, fmt.Errorf("TCP administration requires a local certificate")
+		}
+		a.listener = tls.NewListener(a.listener, a.config.tlsConfig)
+	}
 	a.log.Infof("%s admin socket listening on %s",
 		strings.ToUpper(a.listener.Addr().Network()),
 		a.listener.Addr().String())
 
 	_ = a.AddHandler("list", "List available commands", []string{}, func(_ json.RawMessage) (interface{}, error) {
+		a.handlerMu.RLock()
+		defer a.handlerMu.RUnlock()
 		res := &ListResponse{}
 		for name, handler := range a.handlers {
 			res.List = append(res.List, ListEntry{
@@ -309,7 +327,15 @@ func (a *AdminSocket) listen() {
 	for {
 		conn, err := a.listener.Accept()
 		if err == nil {
-			go a.handleRequest(conn)
+			select {
+			case a.connections <- struct{}{}:
+				go func() {
+					defer func() { <-a.connections }()
+					a.handleRequest(conn)
+				}()
+			default:
+				_ = conn.Close()
+			}
 		} else {
 			select {
 			case <-a.done:
@@ -324,7 +350,8 @@ func (a *AdminSocket) listen() {
 
 // handleRequest calls the request handler for each request sent to the admin API.
 func (a *AdminSocket) handleRequest(conn net.Conn) {
-	decoder := json.NewDecoder(conn)
+	// Bound each session, including incomplete JSON and idle TLS handshakes.
+	decoder := json.NewDecoder(io.LimitReader(conn, 1<<20))
 	decoder.DisallowUnknownFields()
 
 	encoder := json.NewEncoder(conn)
@@ -333,6 +360,9 @@ func (a *AdminSocket) handleRequest(conn net.Conn) {
 	defer conn.Close()
 
 	for {
+		if err := conn.SetDeadline(time.Now().Add(30 * time.Second)); err != nil {
+			return
+		}
 		var err error
 		var buf json.RawMessage
 		var req AdminSocketRequest
@@ -350,7 +380,9 @@ func (a *AdminSocket) handleRequest(conn net.Conn) {
 				return fmt.Errorf("no request specified")
 			}
 			reqname := strings.ToLower(req.Name)
+			a.handlerMu.RLock()
 			handler, ok := a.handlers[reqname]
+			a.handlerMu.RUnlock()
 			if !ok {
 				return fmt.Errorf("unknown action '%s', try 'list' for help", reqname)
 			}

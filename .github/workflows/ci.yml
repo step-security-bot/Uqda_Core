@@ -23,7 +23,13 @@ jobs:
         with:
           go-version-file: "go.mod"
       - name: Check formatting
-        run: test -z "$(gofmt -l .)"
+        run: |
+          gofmt -d .
+          test -z "$(gofmt -l .)"
+      - name: MSI version ordering
+        run: |
+          sh tests/msversion_test.sh
+          python3 tests/release_gate_test.py
       - name: Documentation consistency
         run: python3 tests/documentation_test.py
       - name: Windows installer isolation invariants
@@ -57,6 +63,28 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
+
+  race-and-nested:
+    name: Race and nested module (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Vet and race checks
+        run: |
+          go vet ./...
+          go test -race -timeout=10m ./...
+      - name: Test nested Ironwood module
+        working-directory: third_party/ironwood
+        run: |
+          go vet ./...
+          go test -race -timeout=10m ./...
 
   vulnerability-scan:
     name: Dependency vulnerabilities
@@ -95,6 +123,7 @@ jobs:
           - { name: failover, script: failover.sh }
           - { name: loss-latency, script: loss-latency.sh }
           - { name: secure-required, script: secure-required.sh }
+          - { name: upstream-compatibility, script: upstream-compatibility.sh }
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -102,6 +131,17 @@ jobs:
           go-version-file: "go.mod"
       - name: Build UQDA
         run: ./build
+      - name: Fetch pinned upstream interoperability fixture
+        if: matrix.name == 'upstream-compatibility'
+        uses: actions/checkout@v7
+        with:
+          repository: yggdrasil-network/yggdrasil-go
+          ref: 422836eeb21a99790caa286aa63d493bbc4766d7 # v0.5.14
+          path: .upstream
+      - name: Build upstream interoperability fixture
+        if: matrix.name == 'upstream-compatibility'
+        working-directory: .upstream
+        run: go build -o /tmp/uqda-upstream-fixture ./cmd/yggdrasil
       - name: Check namespace test prerequisites
         run: |
           command -v ip
@@ -112,7 +152,7 @@ jobs:
       - name: Build legacy protocol fixture
         run: go build -o /tmp/uqda-e2e-legacy-peer ./tests/e2e/legacy_peer.go
       - name: Run ${{ matrix.name }} E2E scenario
-        run: sudo env UQDA_LEGACY_PEER_BIN=/tmp/uqda-e2e-legacy-peer bash "tests/e2e/${{ matrix.script }}"
+        run: sudo env UQDA_LEGACY_PEER_BIN=/tmp/uqda-e2e-legacy-peer UPSTREAM_BIN=/tmp/uqda-upstream-fixture bash "tests/e2e/${{ matrix.script }}"
 
   build-linux:
     strategy:
@@ -237,7 +277,7 @@ jobs:
 
   tests-ok:
     name: All tests passed
-    needs: [lint, codeql, vulnerability-scan, handshake-fuzz-smoke, e2e-linux, build-linux, build-windows, build-macos, homebrew-cask, build-freebsd]
+    needs: [lint, codeql, vulnerability-scan, handshake-fuzz-smoke, e2e-linux, build-linux, build-windows, build-macos, homebrew-cask, build-freebsd, race-and-nested]
     runs-on: ubuntu-latest
     if: ${{ !cancelled() }}
     steps:
