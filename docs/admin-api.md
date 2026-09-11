@@ -1,5 +1,10 @@
 # Administration CLI and JSON API
 
+Development security update: local TCP administration uses a separate certificate
+derived from the existing node identity, a node-only trust store, and standard
+mutual certificate verification. The mesh certificate is not modified.
+Listener startup errors omit addresses and raw errors to avoid credential leaks.
+
 ## Development hardening: authenticated local administration
 
 In the development branch, TCP administration (including existing `tcp://`

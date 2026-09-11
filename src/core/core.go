@@ -125,11 +125,11 @@ func New(cert *tls.Certificate, logger Logger, opts ...SetupOption) (*Core, erro
 	for listenaddr := range c.config._listeners {
 		u, err := url.Parse(string(listenaddr))
 		if err != nil {
-			c.log.Errorf("Invalid listener URI %q specified, ignoring\n", listenaddr)
+			c.log.Errorln("Invalid listener URI specified, ignoring (details withheld)")
 			continue
 		}
 		if _, err = c.links.listen(u, "", false); err != nil {
-			c.log.Errorf("Failed to start listener %q: %s\n", listenaddr, err)
+			c.log.Errorln("Failed to start listener (address and error details withheld)")
 		}
 	}
 	return c, nil

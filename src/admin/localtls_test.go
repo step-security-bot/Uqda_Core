@@ -15,6 +15,10 @@ import (
 func TestLocalTLSRequiresMatchingNodeIdentity(t *testing.T) {
 	local := config.GenerateConfig()
 	other := config.GenerateConfig()
+	settings := PinnedTLSConfig(local.Certificate)
+	if settings.InsecureSkipVerify || settings.ClientAuth != tls.RequireAndVerifyClientCert {
+		t.Fatal("standard mutual certificate verification must remain enabled")
+	}
 	for _, tc := range []struct {
 		name   string
 		cert   *tls.Certificate
@@ -35,7 +39,7 @@ func TestLocalTLSRequiresMatchingNodeIdentity(t *testing.T) {
 			if tc.cert == nil {
 				clientConfig.Certificates = nil
 			} else {
-				clientConfig.Certificates = []tls.Certificate{*tc.cert}
+				clientConfig.Certificates = PinnedTLSConfig(tc.cert).Certificates
 			}
 			client := tls.Client(right, clientConfig)
 			result := make(chan error, 1)
