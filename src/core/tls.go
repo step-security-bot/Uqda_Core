@@ -17,13 +17,26 @@ func (c *Core) generateTLSConfig(cert *tls.Certificate) (*tls.Config, error) {
 		},
 		// Mesh identities are self-issued, not DNS/CA identities. Validate the
 		// certificate here and bind its key to the overlay handshake below.
-		VerifyConnection:   c.verifyTLSConnection,
+		VerifyConnection: c.verifyTLSConnection,
+		// codeql[go/disabled-certificate-check]: self-issued mesh identities require custom
+		// validation in VerifyConnection; certificate signature, expiry, and Ed25519 key
+		// are verified there before accepting the connection. See verifyTLSConnection.
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS13,
 	}
 	return config, nil
 }
 
+// verifyTLSConnection validates that the peer certificate is properly formed, not expired,
+// and contains an Ed25519 key suitable for UQDA mesh identity binding. This callback is
+// mandatory because InsecureSkipVerify disables Go's default certificate chain validation;
+// we must perform all critical checks here.
+//
+// Validation order:
+// 1. Reject multiple certificates (UQDA mesh uses single self-issued certificates only)
+// 2. Verify Ed25519 public key is present
+// 3. Check certificate is within its validity window (NotBefore/NotAfter)
+// 4. Verify certificate signature (self-signed)
 func (c *Core) verifyTLSConnection(state tls.ConnectionState) error {
 	if len(state.PeerCertificates) != 1 {
 		return fmt.Errorf("mesh TLS requires exactly one identity certificate")
