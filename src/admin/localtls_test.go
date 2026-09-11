@@ -16,8 +16,8 @@ func TestLocalTLSRequiresMatchingNodeIdentity(t *testing.T) {
 	local := config.GenerateConfig()
 	other := config.GenerateConfig()
 	for _, tc := range []struct {
-		name string
-		cert *tls.Certificate
+		name   string
+		cert   *tls.Certificate
 		wantOK bool
 	}{
 		{"same node", local.Certificate, true},

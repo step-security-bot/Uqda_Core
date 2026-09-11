@@ -116,7 +116,7 @@ func (cfg *NodeConfig) ReadFrom(r io.Reader) (int64, error) {
 	// Persistent configurations must name an identity. Silently generating a
 	// replacement key here would change the node address on every restart.
 	var identity struct {
-		PrivateKey KeyBytes
+		PrivateKey     KeyBytes
 		PrivateKeyPath string
 	}
 	if err := hjson.Unmarshal(conf, &identity); err != nil {

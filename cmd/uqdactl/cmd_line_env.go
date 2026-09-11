@@ -14,8 +14,8 @@ import (
 )
 
 type CmdLineEnv struct {
-	configFile string
-	endpointExplicit bool
+	configFile           string
+	endpointExplicit     bool
 	args                 []string
 	endpoint, server     string
 	color                string

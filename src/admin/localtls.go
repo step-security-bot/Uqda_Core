@@ -26,9 +26,9 @@ func PinnedTLSConfig(cert *tls.Certificate) *tls.Config {
 	}
 	pinned := append(ed25519.PublicKey(nil), key...)
 	return &tls.Config{
-		MinVersion: tls.VersionTLS13,
+		MinVersion:   tls.VersionTLS13,
 		Certificates: []tls.Certificate{*cert},
-		ClientAuth: tls.RequireAnyClientCert,
+		ClientAuth:   tls.RequireAnyClientCert,
 		// The self-signed node certificate is verified by exact public-key pin
 		// below, not by a public CA, hostname or the certificate's validity dates.
 		InsecureSkipVerify: true, // #nosec G402 -- mandatory VerifyConnection pin

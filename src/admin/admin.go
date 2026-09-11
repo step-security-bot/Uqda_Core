@@ -19,16 +19,16 @@ import (
 )
 
 type AdminSocket struct {
-	core     *core.Core
-	log      core.Logger
-	listener net.Listener
-	handlers map[string]handler
-	handlerMu sync.RWMutex
+	core        *core.Core
+	log         core.Logger
+	listener    net.Listener
+	handlers    map[string]handler
+	handlerMu   sync.RWMutex
 	connections chan struct{}
-	done     chan struct{}
-	config   struct {
+	done        chan struct{}
+	config      struct {
 		listenaddr ListenAddress
-		tlsConfig *tls.Config
+		tlsConfig  *tls.Config
 	}
 }
 
@@ -79,9 +79,9 @@ func (a *AdminSocket) AddHandler(name, desc string, args []string, handlerfunc c
 // Init runs the initial admin setup.
 func New(c *core.Core, log core.Logger, opts ...SetupOption) (*AdminSocket, error) {
 	a := &AdminSocket{
-		core:     c,
-		log:      log,
-		handlers: make(map[string]handler),
+		core:        c,
+		log:         log,
+		handlers:    make(map[string]handler),
 		connections: make(chan struct{}, 64),
 	}
 	for _, opt := range opts {
