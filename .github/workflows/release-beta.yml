@@ -26,11 +26,16 @@ jobs:
     name: Stable release quality gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Resolve release version
         shell: bash
         run: echo "UQDA_VERSION=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")" >> "$GITHUB_ENV"
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: Validate stable version and notes
@@ -71,13 +76,18 @@ jobs:
           - { os: openbsd, arch: amd64, goarch: amd64 }
           - { os: openbsd, arch: arm64, goarch: arm64 }
     steps:
-      - uses: actions/checkout@v7
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Resolve release version
         shell: bash
         run: echo "UQDA_VERSION=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")" >> "$GITHUB_ENV"
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: Validate release version
@@ -95,7 +105,7 @@ jobs:
           mkdir "$archive"
           cp uqda uqdactl install.sh updater.sh uninstall.sh README.md README_AR.md LICENSE NOTICE.md "$archive/"
           tar -czf "$archive.tar.gz" "$archive"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: portable-${{ matrix.os }}-${{ matrix.arch }}
           path: "uqda-*.tar.gz"
@@ -109,13 +119,18 @@ jobs:
       matrix:
         arch: [amd64, i386, mips, mipsel, armhf, armel, arm64]
     steps:
-      - uses: actions/checkout@v7
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Resolve release version
         shell: bash
         run: echo "UQDA_VERSION=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")" >> "$GITHUB_ENV"
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: Build and inspect package
@@ -127,7 +142,7 @@ jobs:
           dpkg-deb --info "$package"
           dpkg-deb --contents "$package" | grep -E 'usr/bin/(uqda|uqdactl)$'
           dpkg-deb --contents "$package" | grep 'usr/share/uqda/uninstall.sh'
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: debian-${{ matrix.arch }}
           path: "uqda-*.deb"
@@ -145,13 +160,18 @@ jobs:
           - { target: vyos-amd64, arch: amd64, package: vyos13 }
           - { target: vyos-i386, arch: i386, package: vyos13 }
     steps:
-      - uses: actions/checkout@v7
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Resolve release version
         shell: bash
         run: echo "UQDA_VERSION=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")" >> "$GITHUB_ENV"
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: Build and inspect package
@@ -166,7 +186,7 @@ jobs:
           dpkg-deb --contents "$package" | grep 'usr/share/uqda/uninstall.sh'
           dpkg-deb --contents "$package" | grep 'templates/interfaces/uqda/node.def'
           dpkg-deb --contents "$package" | head -1 | grep '^drwxr-xr-x'
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: router-${{ matrix.target }}
           path: "uqda-*.deb"
@@ -182,13 +202,18 @@ jobs:
       matrix:
         arch: [amd64, arm64]
     steps:
-      - uses: actions/checkout@v7
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Resolve release version
         shell: bash
         run: echo "UQDA_VERSION=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")" >> "$GITHUB_ENV"
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: Install Apple signing identities
@@ -266,7 +291,7 @@ jobs:
           xcrun stapler staple "$package"
           xcrun stapler validate "$package"
           spctl --assess --type install --verbose=4 "$package"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: macos-${{ matrix.arch }}
           path: "uqda-*.pkg"
@@ -291,7 +316,12 @@ jobs:
       matrix:
         arch: [x64, x86, arm64]
     steps:
-      - uses: actions/checkout@v7
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Resolve release version
@@ -300,10 +330,10 @@ jobs:
           version=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")
           echo "UQDA_VERSION=$version" >> "$GITHUB_ENV"
           echo "UQDA_VERSION_BARE=${version#v}" >> "$GITHUB_ENV"
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
       - name: Resolve Windows signing mode
         # WiX 3 candle/light are required by our MSI authoring.
         shell: bash
@@ -344,7 +374,7 @@ jobs:
       - name: Upload unsigned executables for SignPath
         if: env.SIGNPATH_ENABLED == 'true'
         id: upload-unsigned-executables
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: internal-unsigned-windows-executables-${{ matrix.arch }}
           path: |
@@ -386,7 +416,7 @@ jobs:
       - name: Upload unsigned installer for SignPath
         if: env.SIGNPATH_ENABLED == 'true'
         id: upload-unsigned-installer
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: internal-unsigned-windows-installer-${{ matrix.arch }}
           path: uqda-${{ env.UQDA_VERSION_BARE }}-${{ matrix.arch }}.msi
@@ -438,7 +468,7 @@ jobs:
             $arguments.RequireSignature = $true
           }
           ./contrib/msi/test-installed-msi.ps1 @arguments
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-${{ matrix.arch }}
           path: "uqda-*.msi"
@@ -448,13 +478,18 @@ jobs:
     name: Vendored source
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Resolve release version
         shell: bash
         run: echo "UQDA_VERSION=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")" >> "$GITHUB_ENV"
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
       - name: Create vendored source archive
@@ -464,7 +499,7 @@ jobs:
           mkdir "$archive"
           tar --exclude-vcs --exclude="$archive" -cf - . | tar -xf - -C "$archive"
           tar -czf "$archive.tar.gz" "$archive"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: vendored-source
           path: "uqda-*-vendored-source.tar.gz"
@@ -474,7 +509,12 @@ jobs:
     name: Release installation tools
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Resolve release version
         shell: bash
         run: echo "UQDA_VERSION=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")" >> "$GITHUB_ENV"
@@ -485,7 +525,7 @@ jobs:
           sh -n install.sh updater.sh uninstall.sh tests/install_test.sh tests/uninstall_test.sh
           sh tests/install_test.sh
           sh tests/uninstall_test.sh
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-tools
           path: |
@@ -506,7 +546,12 @@ jobs:
       id-token: write
       packages: write
     steps:
-      - uses: actions/checkout@v7
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Resolve release version
         shell: bash
         run: echo "UQDA_VERSION=$(sh contrib/semver/release-version.sh "${UQDA_VERSION:-}")" >> "$GITHUB_ENV"
@@ -515,16 +560,16 @@ jobs:
           printf '%s\n' "$UQDA_VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
           test -f ".github/releases/${UQDA_VERSION}.md"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Container metadata
         id: container_meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/uqda/core
           tags: |
@@ -535,7 +580,7 @@ jobs:
             type=raw,value=latest
       - name: Build and publish multi-platform container package
         id: container_build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: ./contrib/docker/Dockerfile.multiarch
@@ -558,7 +603,7 @@ jobs:
           docker run --rm --platform linux/amd64 \
             --entrypoint /usr/bin/uqda "$image" -version | tee container-version.txt
           grep -F "Build version: ${UQDA_VERSION#v}" container-version.txt
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: release-assets
           merge-multiple: true

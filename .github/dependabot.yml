@@ -45,3 +45,13 @@ updates:
       docker-images:
         patterns:
           - "*"
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: daily
+
+  - package-ecosystem: gomod
+    directory: /third_party/ironwood
+    schedule:
+      interval: daily
