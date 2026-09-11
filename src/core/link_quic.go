@@ -57,7 +57,7 @@ func (l *linkQUIC) dial(ctx context.Context, url *url.URL, info linkInfo, option
 		tlsconfig.MinVersion = tls.VersionTLS12
 		tlsconfig.MaxVersion = tls.VersionTLS13
 		hostport := net.JoinHostPort(ip.String(), fmt.Sprintf("%d", port))
-		qc, err := quic.DialAddr(ctx, hostport, l.tlsconfig, l.quicconfig)
+		qc, err := quic.DialAddr(ctx, hostport, tlsconfig, l.quicconfig)
 		if err != nil {
 			return nil, err
 		}

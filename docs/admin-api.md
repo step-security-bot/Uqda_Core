@@ -1,5 +1,11 @@
 # Administration CLI and JSON API
 
+Mesh transport hardening (development): WSS uses system CA and hostname
+verification. Direct TLS and QUIC validate self-issued Ed25519 certificates and
+bind the certificate key to the overlay identity before admitting the peer.
+Self-issued mesh TLS still bypasses public CA/DNS verification; its CodeQL alert
+must not be treated as closed solely because custom validation was added.
+
 Development security update: local TCP administration uses a separate certificate
 derived from the existing node identity, a node-only trust store, and standard
 mutual certificate verification. The mesh certificate is not modified.

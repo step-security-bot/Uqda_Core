@@ -3,9 +3,9 @@ package core
 import (
 	"crypto/ed25519"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"net"
+	"time"
 )
 
 func (c *Core) generateTLSConfig(cert *tls.Certificate) (*tls.Config, error) {
@@ -15,20 +15,28 @@ func (c *Core) generateTLSConfig(cert *tls.Certificate) (*tls.Config, error) {
 		GetClientCertificate: func(cri *tls.CertificateRequestInfo) (*tls.Certificate, error) {
 			return cert, nil
 		},
-		VerifyPeerCertificate: c.verifyTLSCertificate,
-		VerifyConnection:      c.verifyTLSConnection,
-		InsecureSkipVerify:    true,
-		MinVersion:            tls.VersionTLS13,
+		// Mesh identities are self-issued, not DNS/CA identities. Validate the
+		// certificate here and bind its key to the overlay handshake below.
+		VerifyConnection:   c.verifyTLSConnection,
+		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS13,
 	}
 	return config, nil
 }
 
-func (c *Core) verifyTLSCertificate(_ [][]byte, _ [][]*x509.Certificate) error {
-	return nil
-}
-
-func (c *Core) verifyTLSConnection(_ tls.ConnectionState) error {
-	return nil
+func (c *Core) verifyTLSConnection(state tls.ConnectionState) error {
+	if len(state.PeerCertificates) != 1 {
+		return fmt.Errorf("mesh TLS requires exactly one identity certificate")
+	}
+	cert := state.PeerCertificates[0]
+	if _, ok := cert.PublicKey.(ed25519.PublicKey); !ok {
+		return fmt.Errorf("mesh TLS requires an Ed25519 identity")
+	}
+	now := time.Now()
+	if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
+		return fmt.Errorf("mesh TLS identity certificate is outside its validity period")
+	}
+	return cert.CheckSignature(cert.SignatureAlgorithm, cert.RawTBSCertificate, cert.Signature)
 }
 
 // verifyTLSPeerIdentity binds the certificate used by a direct TLS transport
@@ -38,11 +46,19 @@ func verifyTLSPeerIdentity(conn net.Conn, expected ed25519.PublicKey) error {
 	if tracked, ok := conn.(*linkConn); ok {
 		conn = tracked.Conn
 	}
-	tlsConn, ok := conn.(*tls.Conn)
-	if !ok {
+	var state tls.ConnectionState
+	switch transport := conn.(type) {
+	case *tls.Conn:
+		state = transport.ConnectionState()
+	case *linkQUICStream:
+		state = transport.Conn.ConnectionState().TLS
+	default:
 		return nil
 	}
-	state := tlsConn.ConnectionState()
+	return verifyTLSStateIdentity(state, expected)
+}
+
+func verifyTLSStateIdentity(state tls.ConnectionState, expected ed25519.PublicKey) error {
 	if len(state.PeerCertificates) != 1 {
 		return fmt.Errorf("TLS peer presented %d certificates, want exactly one", len(state.PeerCertificates))
 	}

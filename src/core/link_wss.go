@@ -31,7 +31,9 @@ func (l *links) newLinkWSS() *linkWSS {
 }
 
 func (l *linkWSS) dial(ctx context.Context, url *url.URL, info linkInfo, options linkOptions) (net.Conn, error) {
-	tlsconfig := l.tlsconfig.Clone()
+	// WSS terminates at an HTTPS server, often a reverse proxy. Authenticate
+	// its DNS identity with system trust, not the mesh self-signed policy.
+	tlsconfig := &tls.Config{MinVersion: tls.VersionTLS12}
 	return l.findSuitableIP(url, func(hostname string, ip net.IP, port int) (net.Conn, error) {
 		tlsconfig.ServerName = hostname
 		tlsconfig.MinVersion = tls.VersionTLS12
