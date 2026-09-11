@@ -191,10 +191,10 @@ wait_peer_error() {
 }
 
 wait_for_ping() {
-  local ns=$1 address=$2 timeout=${3:-25}
+  local ns=$1 address=$2 timeout=${3:-25} interface=${4:-uqda0}
   local deadline=$((SECONDS + timeout))
   while (( SECONDS < deadline )); do
-    if ip netns exec "$ns" ping -6 -n -I uqda0 -c 1 -W 1 "$address" >/dev/null 2>&1; then
+    if ip netns exec "$ns" ping -6 -n -I "$interface" -c 1 -W 1 "$address" >/dev/null 2>&1; then
       return 0
     fi
     sleep 0.25

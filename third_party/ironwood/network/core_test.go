@@ -383,12 +383,10 @@ func (d *dummyConn) Close() error {
 
 func (d *dummyConn) LocalAddr() net.Addr {
 	panic("Not implemented: LocalAddr")
-	return nil
 }
 
 func (d *dummyConn) RemoteAddr() net.Addr {
 	panic("Not implemented: RemoteAddr")
-	return nil
 }
 
 func (d *dummyConn) SetDeadline(t time.Time) error {
@@ -403,5 +401,4 @@ func (d *dummyConn) SetReadDeadline(t time.Time) error {
 
 func (d *dummyConn) SetWriteDeadline(t time.Time) error {
 	panic("Not implemented: SetWriteDeadline")
-	return nil
 }

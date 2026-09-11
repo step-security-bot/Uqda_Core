@@ -28,5 +28,5 @@ wait_peer_count a 1 30
 ADDR_B=$("$UPSTREAM_BIN" -useconffile "$CFG_B" -address)
 ADDR_A=$(node_address a)
 wait_for_ping "$A" "$ADDR_B" 30
-wait_for_ping "$B" "$ADDR_A" 30
+wait_for_ping "$B" "$ADDR_A" 30 ygg-test
 echo '[E2E] PASS: bidirectional overlay traffic with pinned upstream Yggdrasil 0.5.14'

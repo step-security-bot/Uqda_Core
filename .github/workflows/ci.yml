@@ -77,10 +77,12 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Vet and race checks
+        shell: bash
         run: |
           go vet ./...
           go test -race -timeout=10m ./...
       - name: Test nested Ironwood module
+        shell: bash
         working-directory: third_party/ironwood
         run: |
           go vet ./...
